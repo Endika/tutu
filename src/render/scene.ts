@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import type { Board, Move, Piece } from '../core/types';
 import { SIZE, EXIT_ROW } from '../core/types';
-import { legalMoves } from '../core/board';
+import { legalMoves, buildGrid } from '../core/board';
 import { createCarGroup } from './car';
 
 // Fixed palette: id 0 = red car, rest bright colours
@@ -15,6 +15,40 @@ function groupCenter(p: Piece): [number, number] {
   const cx = p.c + (p.o === 'H' ? (p.len - 1) / 2 : 0);
   const cz = p.r + (p.o === 'V' ? (p.len - 1) / 2 : 0);
   return [cx - SIZE / 2 + 0.5, cz - SIZE / 2 + 0.5];
+}
+
+// Returns the continuous [min, max] head position a piece can slide to.
+// For the red car (id 0) rightward, allow head up to SIZE-2 (exit).
+function legalRange(piece: Piece, board: Board): [number, number] {
+  const g = buildGrid(board);
+  if (piece.o === 'H') {
+    let min = piece.c;
+    while (min - 1 >= 0 && (g[piece.r] as number[])[min - 1] === -1) min--;
+    let tail = piece.c + piece.len - 1;
+    let max = piece.c;
+    while (tail + 1 < SIZE && (g[piece.r] as number[])[tail + 1] === -1) { tail++; max++; }
+    if (piece.id === 0 && tail === SIZE - 1) max = SIZE - 2;
+    return [min, max];
+  } else {
+    let min = piece.r;
+    while (min - 1 >= 0 && (g[min - 1] as number[])[piece.c] === -1) min--;
+    let tail = piece.r + piece.len - 1;
+    let max = piece.r;
+    while (tail + 1 < SIZE && (g[tail + 1] as number[])[piece.c] === -1) { tail++; max++; }
+    return [min, max];
+  }
+}
+
+interface DragState {
+  piece: Piece;
+  group: THREE.Group;
+  axis: 'x' | 'z';
+  startHead: number;
+  startHitOnPlane: number;
+  min: number;
+  max: number;
+  moved: boolean;
+  liveHead: number;
 }
 
 export interface SceneController {
@@ -107,7 +141,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
 
   let selected: Piece | null = null;
   const markers: THREE.Mesh[] = [];
-  // map marker → Move that produced it
   const markerMoves = new Map<THREE.Mesh, Move>();
 
   let onMoveCb: ((move: Move) => void) | null = null;
@@ -115,7 +148,15 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
 
   let animFn: (() => void) | null = null;
 
-  const markerGeo = new THREE.CylinderGeometry(0.28, 0.28, 0.08, 24);
+  // Drag state: null when idle
+  let drag: DragState | null = null;
+
+  // Large, easy-to-tap destination discs (nearly a full cell) — small ones were finicky to hit.
+  const markerGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.08, 28);
+
+  // Board plane for drag raycasting (y = 0)
+  const boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+  const planeHit = new THREE.Vector3();
 
   // --- helpers ---
   function setLit(group: THREE.Group, on: boolean) {
@@ -147,7 +188,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
           opacity: 0.92,
         }),
       );
-      // Place marker at the visual center of the destination position
       let markerX: number;
       let markerZ: number;
       if (piece.o === 'H') {
@@ -233,14 +273,19 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   const ray = new THREE.Raycaster();
   const ndc = new THREE.Vector2();
 
-  function onPointerDown(e: PointerEvent) {
+  function setNdc(e: PointerEvent) {
     const rect = canvas.getBoundingClientRect();
     ndc.set(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
       -((e.clientY - rect.top) / rect.height) * 2 + 1,
     );
+  }
+
+  function onPointerDown(e: PointerEvent) {
+    setNdc(e);
     ray.setFromCamera(ndc, camera);
 
+    // 1. If a car is selected, check markers first (tap-to-destination)
     if (selected !== null) {
       const mh = ray.intersectObjects(markers);
       if (mh.length) {
@@ -253,6 +298,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       }
     }
 
+    // 2. Raycast car groups
     const allGroups = [...carGroups.values()];
     const ch = ray.intersectObjects(allGroups, true);
     if (ch.length) {
@@ -262,20 +308,121 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       }
       const piece = obj?.userData['piece'] as Piece | undefined;
       if (piece) {
-        if (selected !== null && selected.id === piece.id) {
-          deselect();
-        } else {
+        // Select if not already selected
+        if (selected === null || selected.id !== piece.id) {
           deselect();
           selectPiece(piece);
+        }
+
+        // Begin a potential drag
+        ray.setFromCamera(ndc, camera);
+        ray.ray.intersectPlane(boardPlane, planeHit);
+        const startHitOnPlane = piece.o === 'H' ? planeHit.x : planeHit.z;
+        const startHead = piece.o === 'H' ? piece.c : piece.r;
+        const [min, max] = legalRange(piece, currentBoard);
+        const group = carGroups.get(piece.id);
+        if (group) {
+          drag = {
+            piece,
+            group,
+            axis: piece.o === 'H' ? 'x' : 'z',
+            startHead,
+            startHitOnPlane,
+            min,
+            max,
+            moved: false,
+            liveHead: startHead,
+          };
+          canvas.setPointerCapture(e.pointerId);
         }
         return;
       }
     }
 
+    // 3. Empty board click → deselect
     deselect();
   }
 
+  function onPointerMove(e: PointerEvent) {
+    if (!drag) return;
+    setNdc(e);
+    ray.setFromCamera(ndc, camera);
+    ray.ray.intersectPlane(boardPlane, planeHit);
+
+    const now = drag.axis === 'x' ? planeHit.x : planeHit.z;
+    const delta = now - drag.startHitOnPlane;
+    const rawHead = drag.startHead + delta;
+    const clampedHead = Math.max(drag.min, Math.min(drag.max, rawHead));
+    drag.liveHead = clampedHead;
+
+    if (Math.abs(clampedHead - drag.startHead) > 0.15) {
+      if (!drag.moved) {
+        drag.moved = true;
+        clearMarkers(); // hide markers during drag
+      }
+      // Move the car group continuously
+      const p = drag.piece;
+      if (p.o === 'H') {
+        const cx = clampedHead + (p.len - 1) / 2 - SIZE / 2 + 0.5;
+        drag.group.position.x = cx;
+      } else {
+        const cz = clampedHead + (p.len - 1) / 2 - SIZE / 2 + 0.5;
+        drag.group.position.z = cz;
+      }
+      // Lift slightly while dragging
+      drag.group.position.y = 0.2;
+    }
+  }
+
+  function onPointerUp(e: PointerEvent) {
+    if (!drag) return;
+
+    if (drag.moved) {
+      // Snap to nearest integer within [min, max]
+      const snapped = Math.max(drag.min, Math.min(drag.max, Math.round(drag.liveHead)));
+      const piece = drag.piece;
+
+      if (snapped !== drag.startHead) {
+        // Commit the move via the same path as tapped moves
+        const mv: Move =
+          piece.o === 'H'
+            ? { idx: piece.id, nr: piece.r, nc: snapped }
+            : { idx: piece.id, nr: snapped, nc: piece.c };
+        doMove(piece, mv);
+      } else {
+        // Dragged but ended at start — return car to resting position
+        const [wx, wz] = groupCenter(piece);
+        drag.group.position.set(wx, 0, wz);
+        deselect();
+      }
+    }
+    // If !drag.moved: it was a tap — leave car selected with markers showing
+
+    try {
+      canvas.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore if pointer was already released
+    }
+    drag = null;
+  }
+
+  function onPointerCancel(e: PointerEvent) {
+    if (!drag) return;
+    // Return car to its original position
+    const [wx, wz] = groupCenter(drag.piece);
+    drag.group.position.set(wx, 0, wz);
+    try {
+      canvas.releasePointerCapture(e.pointerId);
+    } catch {
+      // ignore
+    }
+    drag = null;
+  }
+
   canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', onPointerCancel);
 
   // --- animation loop ---
   renderer.setAnimationLoop(() => {
@@ -291,10 +438,10 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   function renderBoard(board: Board) {
     currentBoard = board;
 
-    // remove old car groups
     for (const g of carGroups.values()) scene.remove(g);
     carGroups.clear();
     deselect();
+    drag = null;
 
     for (const piece of board) {
       const group = createCarGroup(piece, pieceColor(piece.id));
@@ -312,7 +459,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     const group = carGroups.get(piece.id);
     if (!group) return;
 
-    // pulse the car briefly
     const lm = group.userData['lightMat'] as THREE.MeshStandardMaterial | undefined;
     const prev = lm?.emissiveIntensity ?? 0.18;
     if (lm) lm.emissiveIntensity = 0.9;
@@ -324,6 +470,9 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   function dispose() {
     renderer.setAnimationLoop(null);
     canvas.removeEventListener('pointerdown', onPointerDown);
+    canvas.removeEventListener('pointermove', onPointerMove);
+    canvas.removeEventListener('pointerup', onPointerUp);
+    canvas.removeEventListener('pointercancel', onPointerCancel);
     resizeObserver.disconnect();
     renderer.dispose();
   }
