@@ -22,7 +22,6 @@ export interface SceneController {
   setOnMove(cb: (move: Move) => void): void;
   setOnBlocked(cb: () => void): void;
   highlightHint(move: Move): void;
-  clearSelection(): void;
   dispose(): void;
 }
 
@@ -321,10 +320,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     }, 400);
   }
 
-  function clearSelection() {
-    deselect();
-  }
-
   function dispose() {
     renderer.setAnimationLoop(null);
     canvas.removeEventListener('pointerdown', onPointerDown);
@@ -332,7 +327,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     renderer.dispose();
   }
 
-  return { renderBoard, setOnMove, setOnBlocked, highlightHint, clearSelection, dispose };
+  return { renderBoard, setOnMove, setOnBlocked, highlightHint, dispose };
 
   function setOnMove(cb: (move: Move) => void) {
     onMoveCb = cb;

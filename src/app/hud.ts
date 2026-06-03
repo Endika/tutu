@@ -1,5 +1,4 @@
 import { t, LOCALES } from '../i18n/index';
-import type { Dict } from '../i18n/index';
 
 export interface HudHandlers {
   onReset(): void;
@@ -152,9 +151,3 @@ export function updateMuteLabel(muted: boolean): void {
   if (muteBtn) muteBtn.textContent = muted ? t('unmute') : t('mute');
 }
 
-export function getWinMsgEl(): HTMLElement | null {
-  return document.getElementById('win-msg');
-}
-
-// Re-export so app.ts can call a single function
-export type { Dict };
