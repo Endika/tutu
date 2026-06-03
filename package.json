@@ -12,6 +12,7 @@
     "test": "vitest",
     "test:run": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage",
+    "gen:icons": "tsx tools/gen-icons.ts",
     "gen:levels": "tsx tools/build-levels.ts",
     "prepare": "husky"
   },
