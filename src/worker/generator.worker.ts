@@ -8,8 +8,8 @@ declare const self: DedicatedWorkerGlobalScope;
 
 const rng = makeRng(7);
 
-self.onmessage = (e: MessageEvent<{ pieceCount: number; lo: number; hi: number }>) => {
-  const { pieceCount, lo, hi } = e.data;
+self.onmessage = (e: MessageEvent<{ id: number; pieceCount: number; lo: number; hi: number }>) => {
+  const { id, pieceCount, lo, hi } = e.data;
   const level: Level | null = generateAtDepth(pieceCount, lo, hi, rng);
-  self.postMessage(level);
+  self.postMessage({ id, level });
 };

@@ -21,6 +21,7 @@ export function nextLevel(index: number, gen: GenFn = defaultGen): Level {
 }
 
 let worker: Worker | null = null;
+let msgSeq = 0;
 function getWorker(): Worker {
   worker ??= new Worker(new URL('../worker/generator.worker.ts', import.meta.url), { type: 'module' });
   return worker;
@@ -31,13 +32,15 @@ export function nextLevelAsync(index: number): Promise<Level> {
   if (fromBank) return Promise.resolve(fromBank);
   const p = levelToParams(index + 1);
   const pieceCount = Math.min(p.pieceCount, 6), lo = Math.min(p.targetLo, 4), hi = Math.min(p.targetHi, 7);
+  const id = ++msgSeq;
   return new Promise<Level>((resolve) => {
     const w = getWorker();
-    const onMsg = (e: MessageEvent<Level | null>) => {
+    const onMsg = (e: MessageEvent<{ id: number; level: Level | null }>) => {
+      if (e.data.id !== id) return;
       w.removeEventListener('message', onMsg);
-      resolve(e.data ?? nextLevel(index));
+      resolve(e.data.level ?? nextLevel(index));
     };
     w.addEventListener('message', onMsg);
-    w.postMessage({ pieceCount, lo, hi });
+    w.postMessage({ id, pieceCount, lo, hi });
   });
 }
