@@ -12,6 +12,7 @@ export interface HudHandlers {
   getLevelIndex(): number;
   getMoveCount(): number;
   getCurrentLang(): string;
+  isWon(): boolean;
 }
 
 let container: HTMLElement | null = null;
@@ -144,6 +145,7 @@ export function hideWin(): void {
 export function refreshLabels(h: HudHandlers): void {
   if (!container || !handlers) return;
   buildHud(container, h);
+  if (h.isWon()) showWin();
 }
 
 export function updateMuteLabel(muted: boolean): void {

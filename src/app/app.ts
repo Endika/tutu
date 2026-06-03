@@ -39,6 +39,7 @@ export async function startApp(): Promise<void> {
   let moveCount = 0;
   let musicStarted = false;
   let currentLang = lang;
+  let won = false;
 
   function persistState(): void {
     save({ levelIndex, muted: audio.isMuted(), lang: currentLang });
@@ -57,6 +58,7 @@ export async function startApp(): Promise<void> {
     startBoard = deepCopy(lvl.board);
     history = [];
     moveCount = 0;
+    won = false;
     hideWin();
     scene.renderBoard(currentBoard);
     updateCounters(index, moveCount);
@@ -72,6 +74,7 @@ export async function startApp(): Promise<void> {
     scene.renderBoard(currentBoard);
     updateCounters(levelIndex, moveCount);
     if (isWin(currentBoard)) {
+      won = true;
       audio.victory();
       showWin();
     }
@@ -86,6 +89,7 @@ export async function startApp(): Promise<void> {
       currentBoard = deepCopy(startBoard);
       history = [];
       moveCount = 0;
+      won = false;
       hideWin();
       scene.renderBoard(currentBoard);
       updateCounters(levelIndex, moveCount);
@@ -95,6 +99,7 @@ export async function startApp(): Promise<void> {
       if (!prev) return;
       currentBoard = prev;
       moveCount = Math.max(0, moveCount - 1);
+      won = false;
       hideWin();
       scene.renderBoard(currentBoard);
       updateCounters(levelIndex, moveCount);
@@ -126,6 +131,7 @@ export async function startApp(): Promise<void> {
         getLevelIndex: () => levelIndex,
         getMoveCount: () => moveCount,
         getCurrentLang: () => currentLang,
+        isWon: () => won,
       });
     },
     isMuted(): boolean {
@@ -139,6 +145,9 @@ export async function startApp(): Promise<void> {
     },
     getCurrentLang(): string {
       return currentLang;
+    },
+    isWon(): boolean {
+      return won;
     },
   };
 
