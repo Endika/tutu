@@ -66,16 +66,20 @@ export function buildHud(el: HTMLElement, h: HudHandlers): void {
 
   topBar.append(levelBadge, movesBadge);
 
-  // --- win banner (hidden by default) ---
+  // --- win overlay (centered modal, hidden by default) ---
   winBanner = document.createElement('div');
   winBanner.className =
-    'pointer-events-auto hidden flex-col items-center gap-3 bg-white/95 rounded-3xl p-6 shadow-xl mx-auto';
+    'pointer-events-auto fixed inset-0 z-20 hidden items-center justify-center bg-black/40';
+  const winCard = document.createElement('div');
+  winCard.className =
+    'flex flex-col items-center gap-4 bg-white rounded-3xl px-10 py-8 shadow-xl';
   const winMsg = document.createElement('p');
   winMsg.className = 'text-3xl font-extrabold text-orange-500';
   winMsg.id = 'win-msg';
   winMsg.textContent = t('youWin');
   nextBtn = btn(t('next'), () => h.onNext(), 'bg-orange-400 text-white text-xl px-8 py-4');
-  winBanner.append(winMsg, nextBtn);
+  winCard.append(winMsg, nextBtn);
+  winBanner.append(winCard);
 
   // --- bottom controls ---
   const bottomBar = document.createElement('div');
