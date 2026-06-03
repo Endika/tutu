@@ -23,11 +23,12 @@ let muteBtn: HTMLButtonElement | null = null;
 let winBanner: HTMLDivElement | null = null;
 let nextBtn: HTMLButtonElement | null = null;
 
-function btn(label: string, onClick: () => void, extra = ''): HTMLButtonElement {
+function btn(label: string, onClick: () => void, extra = 'bg-white/90 text-slate-800'): HTMLButtonElement {
   const b = document.createElement('button');
   b.textContent = label;
+  // colour comes only from `extra` (default = white) so callers can override without a class clash
   b.className =
-    `px-4 py-3 rounded-2xl font-bold text-lg bg-white/90 text-slate-800 shadow active:scale-95 transition-transform touch-manipulation ${extra}`.trim();
+    `px-4 py-3 rounded-2xl font-bold text-lg shadow active:scale-95 transition-transform touch-manipulation ${extra}`.trim();
   b.addEventListener('click', onClick);
   return b;
 }
