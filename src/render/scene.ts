@@ -37,9 +37,10 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   scene.background = new THREE.Color(0xe9d9bd);
 
   // --- camera ---
-  const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 100);
-  camera.position.set(0, 9, 7.5);
-  camera.lookAt(0, 0, 0.3);
+  // Near-top-down view: a clear, readable grid (slight tilt keeps the 3D toy look).
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
+  camera.position.set(0, 13, 3.2);
+  camera.lookAt(0, 0, 0);
 
   // --- lights ---
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8d6b3f, 0.9));
