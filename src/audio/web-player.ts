@@ -120,8 +120,17 @@ export class WebPlayer implements Player {
     const noteDuration = 1.8;
     const loopDuration = noteDuration * padFreqs.length;
 
+    const loopOscs: OscillatorNode[] = [];
+
     const playLoop = (): void => {
       if (!this.musicNodes.includes(masterGain)) return;
+
+      // Drop oscillators from previous iterations that have already stopped
+      for (const osc of loopOscs) {
+        const idx = this.musicNodes.indexOf(osc);
+        if (idx !== -1) this.musicNodes.splice(idx, 1);
+      }
+      loopOscs.length = 0;
 
       padFreqs.forEach((freq, i) => {
         const osc = ctx.createOscillator();
@@ -133,6 +142,7 @@ export class WebPlayer implements Player {
         osc.start(start);
         osc.stop(start + noteDuration + 0.05);
         this.musicNodes.push(osc);
+        loopOscs.push(osc);
       });
 
       this.musicTimeout = setTimeout(playLoop, loopDuration * 1000);
