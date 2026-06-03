@@ -19,3 +19,25 @@ export function nextLevel(index: number, gen: GenFn = defaultGen): Level {
     bankLevel(index % bankSize)! // last-resort: recycle a bank level
   );
 }
+
+let worker: Worker | null = null;
+function getWorker(): Worker {
+  worker ??= new Worker(new URL('../worker/generator.worker.ts', import.meta.url), { type: 'module' });
+  return worker;
+}
+
+export function nextLevelAsync(index: number): Promise<Level> {
+  const fromBank = bankLevel(index);
+  if (fromBank) return Promise.resolve(fromBank);
+  const p = levelToParams(index + 1);
+  const pieceCount = Math.min(p.pieceCount, 6), lo = Math.min(p.targetLo, 4), hi = Math.min(p.targetHi, 7);
+  return new Promise<Level>((resolve) => {
+    const w = getWorker();
+    const onMsg = (e: MessageEvent<Level | null>) => {
+      w.removeEventListener('message', onMsg);
+      resolve(e.data ?? nextLevel(index));
+    };
+    w.addEventListener('message', onMsg);
+    w.postMessage({ pieceCount, lo, hi });
+  });
+}
