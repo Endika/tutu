@@ -1,7 +1,5 @@
 import type { Player } from './audio';
 
-const MUSIC_GAIN = 0.14;
-
 export class WebPlayer implements Player {
   private ctx: AudioContext | null = null;
   private musicNodes: AudioNode[] = [];
@@ -102,50 +100,60 @@ export class WebPlayer implements Player {
   }
 
   private scheduleMusicLoop(ctx: AudioContext): void {
-    const masterGain = ctx.createGain();
-    masterGain.gain.setValueAtTime(MUSIC_GAIN, ctx.currentTime);
-    masterGain.connect(ctx.destination);
-    this.musicNodes.push(masterGain);
+    const master = ctx.createGain();
+    master.gain.setValueAtTime(0.7, ctx.currentTime);
+    master.connect(ctx.destination);
+    this.musicNodes.push(master);
 
-    const lfo = ctx.createOscillator();
-    const lfoGain = ctx.createGain();
-    lfo.frequency.setValueAtTime(0.3, ctx.currentTime);
-    lfoGain.gain.setValueAtTime(0.03, ctx.currentTime);
-    lfo.connect(lfoGain);
-    lfoGain.connect(masterGain.gain);
-    lfo.start();
-    this.musicNodes.push(lfo, lfoGain);
+    // A cheerful looping melody in C major: [frequency, beats]
+    const BEAT = 0.3;
+    const C5 = 523.25,
+      D5 = 587.33,
+      E5 = 659.25,
+      F5 = 698.46,
+      G5 = 783.99,
+      A5 = 880.0;
+    const melody: [number, number][] = [
+      [C5, 1], [E5, 1], [G5, 1], [G5, 1],
+      [A5, 1], [G5, 1], [E5, 1], [C5, 1],
+      [D5, 1], [E5, 1], [F5, 1], [E5, 1],
+      [D5, 2], [C5, 2],
+    ];
+    const loopSeconds = melody.reduce((s, [, b]) => s + b, 0) * BEAT;
 
-    const padFreqs = [130.81, 146.83]; // C3, D3
-    const noteDuration = 1.8;
-    const loopDuration = noteDuration * padFreqs.length;
-
-    const loopOscs: OscillatorNode[] = [];
+    // nodes scheduled in the current iteration, pruned at the next one
+    const loopNodes: AudioNode[] = [];
 
     const playLoop = (): void => {
-      if (!this.musicNodes.includes(masterGain)) return;
+      if (!this.musicNodes.includes(master)) return;
 
-      // Drop oscillators from previous iterations that have already stopped
-      for (const osc of loopOscs) {
-        const idx = this.musicNodes.indexOf(osc);
+      for (const node of loopNodes) {
+        const idx = this.musicNodes.indexOf(node);
         if (idx !== -1) this.musicNodes.splice(idx, 1);
       }
-      loopOscs.length = 0;
+      loopNodes.length = 0;
 
-      padFreqs.forEach((freq, i) => {
+      let t = ctx.currentTime + 0.05;
+      for (const [freq, beats] of melody) {
+        const dur = beats * BEAT;
         const osc = ctx.createOscillator();
-        osc.type = 'sine';
-        osc.frequency.setValueAtTime(freq, ctx.currentTime);
-        osc.connect(masterGain);
+        const g = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(freq, t);
+        osc.connect(g);
+        g.connect(master);
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(0.2, t + 0.02);
+        g.gain.setValueAtTime(0.2, t + dur - 0.06);
+        g.gain.linearRampToValueAtTime(0, t + dur - 0.02);
+        osc.start(t);
+        osc.stop(t + dur);
+        this.musicNodes.push(osc, g);
+        loopNodes.push(osc, g);
+        t += dur;
+      }
 
-        const start = ctx.currentTime + i * noteDuration;
-        osc.start(start);
-        osc.stop(start + noteDuration + 0.05);
-        this.musicNodes.push(osc);
-        loopOscs.push(osc);
-      });
-
-      this.musicTimeout = setTimeout(playLoop, loopDuration * 1000);
+      this.musicTimeout = setTimeout(playLoop, loopSeconds * 1000);
     };
 
     playLoop();
