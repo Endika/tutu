@@ -1,6 +1,6 @@
 import type { Player } from './audio';
 
-const MUSIC_GAIN = 0.06;
+const MUSIC_GAIN = 0.14;
 
 export class WebPlayer implements Player {
   private ctx: AudioContext | null = null;
@@ -39,8 +39,8 @@ export class WebPlayer implements Player {
       const sustain = 0.1;
       const release = 0.015;
       gain.gain.setValueAtTime(0, start);
-      gain.gain.linearRampToValueAtTime(0.18, start + attack);
-      gain.gain.setValueAtTime(0.18, start + attack + sustain);
+      gain.gain.linearRampToValueAtTime(0.26, start + attack);
+      gain.gain.setValueAtTime(0.26, start + attack + sustain);
       gain.gain.linearRampToValueAtTime(0, start + attack + sustain + release);
 
       osc.start(start);
@@ -51,17 +51,17 @@ export class WebPlayer implements Player {
   private playSlide(ctx: AudioContext): void {
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
-    osc.type = 'sine';
+    osc.type = 'triangle';
     osc.connect(gain);
     gain.connect(ctx.destination);
 
     const now = ctx.currentTime;
-    const duration = 0.14;
-    osc.frequency.setValueAtTime(300, now);
+    const duration = 0.18;
+    osc.frequency.setValueAtTime(340, now);
     osc.frequency.linearRampToValueAtTime(180, now + duration);
 
     gain.gain.setValueAtTime(0, now);
-    gain.gain.linearRampToValueAtTime(0.12, now + 0.01);
+    gain.gain.linearRampToValueAtTime(0.24, now + 0.012);
     gain.gain.linearRampToValueAtTime(0, now + duration);
 
     osc.start(now);
