@@ -188,16 +188,11 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
           opacity: 0.92,
         }),
       );
-      let markerX: number;
-      let markerZ: number;
-      if (piece.o === 'H') {
-        markerX = mv.nc + (piece.len - 1) / 2 - SIZE / 2 + 0.5;
-        markerZ = mv.nr - SIZE / 2 + 0.5;
-      } else {
-        markerX = mv.nc - SIZE / 2 + 0.5;
-        markerZ = mv.nr + (piece.len - 1) / 2 - SIZE / 2 + 0.5;
-      }
-      mk.position.set(markerX, 0.06, markerZ);
+      // Place the disc on the real grid cell of the destination head (mv.nr, mv.nc),
+      // not the piece centre — long cars were landing markers between cells.
+      const markerX = mv.nc - SIZE / 2 + 0.5;
+      const markerZ = mv.nr - SIZE / 2 + 0.5;
+      mk.position.set(markerX, 0.08, markerZ);
       scene.add(mk);
       markers.push(mk);
       markerMoves.set(mk, mv);
