@@ -39,10 +39,9 @@ export function analyze(start: Board): { template: Board; byDepth: Map<number, s
   const template = start.map((p) => ({ ...p }));
   const comp = new Set([encode(start)]);
   const wins: string[] = [];
-  const isWinEnc = (e: string) => {
-    const code = e.charCodeAt(0);
-    return Math.floor(code / 6) === 2 && code % 6 === 4;
-  };
+  // Red car (piece 0) is horizontal on the exit row, so a win is fully defined
+  // by its head column (4) — mirror isWin() in board.ts, which ignores the row.
+  const isWinEnc = (e: string) => e.charCodeAt(0) % 6 === 4;
   if (isWinEnc(encode(start))) wins.push(encode(start));
   let frontier = [encode(start)];
   while (frontier.length) {
