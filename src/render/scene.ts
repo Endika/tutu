@@ -74,7 +74,10 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   // Near-top-down view: a clear, readable grid (slight tilt keeps the 3D toy look).
   const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
   camera.position.set(0, 13, 3.2);
-  camera.lookAt(0, 0, 0);
+  const cameraTarget = new THREE.Vector3(0, 0, 0);
+  camera.lookAt(cameraTarget);
+  // World-space span the board needs (6.5 board + exit marker + margins).
+  const BOARD_SPAN = 7.8;
 
   // --- lights ---
   scene.add(new THREE.HemisphereLight(0xffffff, 0x8d6b3f, 0.9));
@@ -127,8 +130,16 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
 
   // --- resize ---
   function resize() {
-    renderer.setSize(canvas.clientWidth, canvas.clientHeight);
-    camera.aspect = canvas.clientWidth / canvas.clientHeight;
+    const w = canvas.clientWidth;
+    const h = canvas.clientHeight;
+    renderer.setSize(w, h);
+    const aspect = w / h;
+    camera.aspect = aspect;
+    // Adapt the vertical FOV so the board fits on BOTH axes. On portrait phones the
+    // horizontal FOV is the tight one, so widen vertically until the board fits across.
+    const distance = camera.position.distanceTo(cameraTarget);
+    const fitFactor = BOARD_SPAN / (2 * distance * Math.min(1, aspect));
+    camera.fov = 2 * Math.atan(fitFactor) * (180 / Math.PI);
     camera.updateProjectionMatrix();
   }
   const resizeObserver = new ResizeObserver(resize);
