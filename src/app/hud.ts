@@ -6,8 +6,10 @@ export interface HudHandlers {
   onHint(): void;
   onNext(): void;
   onMuteToggle(): void;
+  onMusicToggle(): void;
   onLangChange(code: string): void;
   isMuted(): boolean;
+  isMusicEnabled(): boolean;
   getLevelIndex(): number;
   getMoveCount(): number;
   getCurrentLang(): string;
@@ -20,18 +22,43 @@ let handlers: HudHandlers | null = null;
 let levelEl: HTMLSpanElement | null = null;
 let movesEl: HTMLSpanElement | null = null;
 let muteBtn: HTMLButtonElement | null = null;
+let musicBtn: HTMLButtonElement | null = null;
 let winBanner: HTMLDivElement | null = null;
 let nextBtn: HTMLButtonElement | null = null;
+let loadingOverlay: HTMLDivElement | null = null;
 
-function btn(label: string, onClick: () => void, extra = 'bg-white/90 text-slate-800'): HTMLButtonElement {
+function btn(
+  icon: string,
+  label: string,
+  onClick: () => void,
+  extra = 'bg-white/90 text-slate-800',
+): HTMLButtonElement {
   const b = document.createElement('button');
-  b.textContent = label;
   // colour comes only from `extra` (default = white) so callers can override without a class clash
   b.className =
-    `px-4 py-3 rounded-2xl font-bold text-lg shadow active:scale-95 transition-transform touch-manipulation ${extra}`.trim();
+    `flex flex-col items-center justify-center gap-0.5 px-2 py-2 rounded-2xl font-bold shadow active:scale-95 transition-transform touch-manipulation ${extra}`.trim();
+  const iconEl = document.createElement('span');
+  iconEl.className = 'text-2xl leading-none';
+  iconEl.textContent = icon;
+  const labelEl = document.createElement('span');
+  labelEl.className = 'text-xs leading-tight';
+  labelEl.textContent = label;
+  b.append(iconEl, labelEl);
   b.addEventListener('click', onClick);
   return b;
 }
+
+// Update the icon + label of a button built by btn().
+function setBtnContent(b: HTMLButtonElement, icon: string, label: string): void {
+  const iconEl = b.children[0];
+  const labelEl = b.children[1];
+  if (iconEl) iconEl.textContent = icon;
+  if (labelEl) labelEl.textContent = label;
+}
+
+// Icon for each toggle reflects the ACTION the button performs (matching its label).
+const muteIcon = (muted: boolean) => (muted ? '🔊' : '🔇');
+const musicIcon = (enabled: boolean) => (enabled ? '🔕' : '🎵');
 
 export function buildHud(el: HTMLElement, h: HudHandlers): void {
   container = el;
@@ -78,37 +105,58 @@ export function buildHud(el: HTMLElement, h: HudHandlers): void {
   winMsg.className = 'text-3xl font-extrabold text-orange-500';
   winMsg.id = 'win-msg';
   winMsg.textContent = t('youWin');
-  nextBtn = btn(t('next'), () => h.onNext(), 'bg-orange-400 text-white text-xl px-8 py-4');
+  nextBtn = btn('⏭️', t('next'), () => h.onNext(), 'bg-orange-400 text-white px-10 py-4');
   winCard.append(winMsg, nextBtn);
   winBanner.append(winCard);
+
+  // --- loading overlay (shown while a level is being generated) ---
+  loadingOverlay = document.createElement('div');
+  loadingOverlay.className =
+    'pointer-events-auto fixed inset-0 z-30 hidden flex-col items-center justify-center gap-4 bg-black/40';
+  const spinner = document.createElement('div');
+  spinner.className =
+    'h-12 w-12 rounded-full border-4 border-white/40 border-t-white animate-spin';
+  const loadingMsg = document.createElement('p');
+  loadingMsg.id = 'loading-msg';
+  loadingMsg.className = 'text-xl font-bold text-white';
+  loadingMsg.textContent = t('loading');
+  loadingOverlay.append(spinner, loadingMsg);
 
   // --- bottom controls ---
   const bottomBar = document.createElement('div');
   bottomBar.className =
-    'pointer-events-auto grid grid-cols-3 gap-2 sm:grid-cols-6';
+    'pointer-events-auto grid grid-cols-3 gap-2 sm:grid-cols-7';
 
-  const resetBtn = btn(t('reset'), () => h.onReset());
+  const resetBtn = btn('🔄', t('reset'), () => h.onReset());
   resetBtn.id = 'btn-reset';
 
-  const undoBtn = btn(t('undo'), () => h.onUndo());
+  const undoBtn = btn('↩️', t('undo'), () => h.onUndo());
   undoBtn.id = 'btn-undo';
 
-  const hintBtn = btn(t('hint'), () => h.onHint());
+  const hintBtn = btn('💡', t('hint'), () => h.onHint());
   hintBtn.id = 'btn-hint';
 
-  const bottomNext = btn(t('next'), () => h.onNext());
+  const bottomNext = btn('⏭️', t('next'), () => h.onNext());
   bottomNext.id = 'btn-next';
 
-  muteBtn = btn(h.isMuted() ? t('unmute') : t('mute'), () => h.onMuteToggle());
+  muteBtn = btn(muteIcon(h.isMuted()), h.isMuted() ? t('unmute') : t('mute'), () => h.onMuteToggle());
   muteBtn.id = 'btn-mute';
+
+  musicBtn = btn(
+    musicIcon(h.isMusicEnabled()),
+    h.isMusicEnabled() ? t('musicOff') : t('music'),
+    () => h.onMusicToggle(),
+  );
+  musicBtn.id = 'btn-music';
 
   // Language selector
   const langWrap = document.createElement('div');
   langWrap.className =
     'flex flex-col items-center bg-white/90 rounded-2xl px-3 py-2 shadow gap-0.5';
   const langLabel = document.createElement('label');
-  langLabel.className = 'text-xs font-semibold text-slate-500 uppercase tracking-wide';
-  langLabel.textContent = t('language');
+  langLabel.className = 'text-2xl leading-none';
+  langLabel.textContent = '🌐';
+  langLabel.title = t('language');
   const langSel = document.createElement('select');
   langSel.id = 'lang-select';
   langSel.className =
@@ -124,9 +172,21 @@ export function buildHud(el: HTMLElement, h: HudHandlers): void {
   langSel.addEventListener('change', () => h.onLangChange(langSel.value));
   langWrap.append(langLabel, langSel);
 
-  bottomBar.append(resetBtn, undoBtn, hintBtn, bottomNext, muteBtn, langWrap);
+  bottomBar.append(resetBtn, undoBtn, hintBtn, bottomNext, muteBtn, musicBtn, langWrap);
 
-  el.append(topBar, winBanner, bottomBar);
+  el.append(topBar, winBanner, loadingOverlay, bottomBar);
+}
+
+export function showLoading(): void {
+  if (!loadingOverlay) return;
+  loadingOverlay.classList.remove('hidden');
+  loadingOverlay.classList.add('flex');
+}
+
+export function hideLoading(): void {
+  if (!loadingOverlay) return;
+  loadingOverlay.classList.add('hidden');
+  loadingOverlay.classList.remove('flex');
 }
 
 export function updateCounters(levelIndex: number, moveCount: number): void {
@@ -153,6 +213,10 @@ export function refreshLabels(h: HudHandlers): void {
 }
 
 export function updateMuteLabel(muted: boolean): void {
-  if (muteBtn) muteBtn.textContent = muted ? t('unmute') : t('mute');
+  if (muteBtn) setBtnContent(muteBtn, muteIcon(muted), muted ? t('unmute') : t('mute'));
+}
+
+export function updateMusicLabel(musicEnabled: boolean): void {
+  if (musicBtn) setBtnContent(musicBtn, musicIcon(musicEnabled), musicEnabled ? t('musicOff') : t('music'));
 }
 

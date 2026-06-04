@@ -1,7 +1,7 @@
 import type { Board, Move } from '../core/types';
 import { applyMove, isWin } from '../core/board';
 import { solve } from '../core/solver';
-import { nextLevelAsync } from '../levels/source';
+import { nextLevelAsync, willGenerate } from '../levels/source';
 import { createScene } from '../render/scene';
 import type { SceneController } from '../render/scene';
 import { Audio } from '../audio/audio';
@@ -15,6 +15,9 @@ import {
   hideWin,
   refreshLabels,
   updateMuteLabel,
+  updateMusicLabel,
+  showLoading,
+  hideLoading,
 } from './hud';
 
 function deepCopy(b: Board): Board {
@@ -30,7 +33,7 @@ export async function startApp(): Promise<void> {
   const hudEl = document.getElementById('hud') as HTMLDivElement;
 
   const scene: SceneController = createScene(canvas);
-  const audio = new Audio(new WebPlayer(), saved.muted);
+  const audio = new Audio(new WebPlayer(), saved.muted, !saved.musicOff);
 
   let levelIndex = saved.levelIndex;
   let currentBoard: Board = [];
@@ -42,7 +45,7 @@ export async function startApp(): Promise<void> {
   let won = false;
 
   function persistState(): void {
-    save({ levelIndex, muted: audio.isMuted(), lang: currentLang });
+    save({ levelIndex, muted: audio.isMuted(), lang: currentLang, musicOff: !audio.isMusicEnabled() });
   }
 
   function tryStartMusic(): void {
@@ -53,7 +56,10 @@ export async function startApp(): Promise<void> {
   }
 
   async function loadLevel(index: number): Promise<void> {
+    const generating = willGenerate(index);
+    if (generating) showLoading();
     const lvl = await nextLevelAsync(index);
+    if (generating) hideLoading();
     currentBoard = deepCopy(lvl.board);
     startBoard = deepCopy(lvl.board);
     history = [];
@@ -114,11 +120,17 @@ export async function startApp(): Promise<void> {
     },
     onMuteToggle(): void {
       audio.setMuted(!audio.isMuted());
-      if (!audio.isMuted() && !musicStarted) {
+      if (!audio.isMuted()) {
         musicStarted = true;
-        audio.music();
+        audio.music(); // resumes the loop if music is enabled
       }
       updateMuteLabel(audio.isMuted());
+      persistState();
+    },
+    onMusicToggle(): void {
+      audio.setMusicEnabled(!audio.isMusicEnabled());
+      if (audio.isMusicEnabled()) musicStarted = true;
+      updateMusicLabel(audio.isMusicEnabled());
       persistState();
     },
     onLangChange(code: string): void {
@@ -136,6 +148,9 @@ export async function startApp(): Promise<void> {
     },
     isMuted(): boolean {
       return audio.isMuted();
+    },
+    isMusicEnabled(): boolean {
+      return audio.isMusicEnabled();
     },
     getLevelIndex(): number {
       return levelIndex;
