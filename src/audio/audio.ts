@@ -6,12 +6,15 @@ export interface Player {
 
 export class Audio {
   private muted: boolean;
+  private musicEnabled: boolean;
 
   constructor(
     private player: Player,
     muted = false,
+    musicEnabled = true,
   ) {
     this.muted = muted;
+    this.musicEnabled = musicEnabled;
   }
 
   setMuted(m: boolean): void {
@@ -21,6 +24,17 @@ export class Audio {
 
   isMuted(): boolean {
     return this.muted;
+  }
+
+  // Music can be turned off independently of the sound effects.
+  setMusicEnabled(on: boolean): void {
+    this.musicEnabled = on;
+    if (on) this.music();
+    else this.player.stopMusic();
+  }
+
+  isMusicEnabled(): boolean {
+    return this.musicEnabled;
   }
 
   horn(): void {
@@ -36,6 +50,6 @@ export class Audio {
   }
 
   music(): void {
-    if (!this.muted) this.player.startMusic();
+    if (!this.muted && this.musicEnabled) this.player.startMusic();
   }
 }

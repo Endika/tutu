@@ -101,7 +101,7 @@ export class WebPlayer implements Player {
 
   private scheduleMusicLoop(ctx: AudioContext): void {
     const master = ctx.createGain();
-    master.gain.setValueAtTime(0.7, ctx.currentTime);
+    master.gain.setValueAtTime(0.28, ctx.currentTime);
     master.connect(ctx.destination);
     this.musicNodes.push(master);
 
@@ -143,8 +143,8 @@ export class WebPlayer implements Player {
         osc.connect(g);
         g.connect(master);
         g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.2, t + 0.02);
-        g.gain.setValueAtTime(0.2, t + dur - 0.06);
+        g.gain.linearRampToValueAtTime(0.14, t + 0.02);
+        g.gain.setValueAtTime(0.14, t + dur - 0.06);
         g.gain.linearRampToValueAtTime(0, t + dur - 0.02);
         osc.start(t);
         osc.stop(t + dur);
