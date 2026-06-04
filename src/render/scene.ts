@@ -140,8 +140,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   const carGroups = new Map<number, THREE.Group>();
 
   let selected: Piece | null = null;
-  const markers: THREE.Mesh[] = [];
-  const markerMoves = new Map<THREE.Mesh, Move>();
 
   let onMoveCb: ((move: Move) => void) | null = null;
   let onBlockedCb: (() => void) | null = null;
@@ -151,12 +149,12 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   // Drag state: null when idle
   let drag: DragState | null = null;
 
-  // Large, easy-to-tap destination discs (nearly a full cell) — small ones were finicky to hit.
-  const markerGeo = new THREE.CylinderGeometry(0.46, 0.46, 0.08, 28);
-
   // Board plane for drag raycasting (y = 0)
   const boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
   const planeHit = new THREE.Vector3();
+
+  // Reusable disc geometry for the hint destination marker
+  const hintDiscGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.08, 24);
 
   // --- helpers ---
   function setLit(group: THREE.Group, on: boolean) {
@@ -165,38 +163,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     const bm = group.userData['beamMat'] as THREE.MeshBasicMaterial | undefined;
     if (lm) lm.emissiveIntensity = on ? 0.9 : 0.18;
     if (bm) bm.opacity = on ? 0.16 : 0;
-  }
-
-  function clearMarkers() {
-    for (const m of markers) scene.remove(m);
-    markers.length = 0;
-    markerMoves.clear();
-  }
-
-  function showMarkers(piece: Piece) {
-    clearMarkers();
-    const moves = legalMoves(currentBoard).filter((mv) => mv.idx === piece.id);
-    for (const mv of moves) {
-      const isExit = piece.id === 0 && mv.nc === SIZE - 2;
-      const mk = new THREE.Mesh(
-        markerGeo,
-        new THREE.MeshStandardMaterial({
-          color: isExit ? 0xffd23f : 0x37d67a,
-          emissive: isExit ? 0x886600 : 0x14502c,
-          emissiveIntensity: 0.6,
-          transparent: true,
-          opacity: 0.92,
-        }),
-      );
-      // Place the disc on the real grid cell of the destination head (mv.nr, mv.nc),
-      // not the piece centre — long cars were landing markers between cells.
-      const markerX = mv.nc - SIZE / 2 + 0.5;
-      const markerZ = mv.nr - SIZE / 2 + 0.5;
-      mk.position.set(markerX, 0.08, markerZ);
-      scene.add(mk);
-      markers.push(mk);
-      markerMoves.set(mk, mv);
-    }
   }
 
   function blockedFlash(group: THREE.Group) {
@@ -222,7 +188,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     const group = carGroups.get(piece.id);
     if (!group) return;
     setLit(group, true);
-    showMarkers(piece);
     const moves = legalMoves(currentBoard).filter((mv) => mv.idx === piece.id);
     if (!moves.length) {
       onBlockedCb?.();
@@ -236,11 +201,9 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       if (group) setLit(group, false);
     }
     selected = null;
-    clearMarkers();
   }
 
   function doMove(piece: Piece, mv: Move) {
-    clearMarkers();
     const group = carGroups.get(piece.id);
     if (!group) return;
     setLit(group, false);
@@ -280,20 +243,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     setNdc(e);
     ray.setFromCamera(ndc, camera);
 
-    // 1. If a car is selected, check markers first (tap-to-destination)
-    if (selected !== null) {
-      const mh = ray.intersectObjects(markers);
-      if (mh.length) {
-        const mk = mh[0]?.object as THREE.Mesh;
-        const mv = markerMoves.get(mk);
-        if (mv) {
-          doMove(selected, mv);
-          return;
-        }
-      }
-    }
-
-    // 2. Raycast car groups
+    // Raycast car groups
     const allGroups = [...carGroups.values()];
     const ch = ray.intersectObjects(allGroups, true);
     if (ch.length) {
@@ -334,7 +284,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       }
     }
 
-    // 3. Empty board click → deselect
+    // Empty board click → deselect
     deselect();
   }
 
@@ -351,10 +301,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     drag.liveHead = clampedHead;
 
     if (Math.abs(clampedHead - drag.startHead) > 0.15) {
-      if (!drag.moved) {
-        drag.moved = true;
-        clearMarkers(); // hide markers during drag
-      }
+      drag.moved = true;
       // Move the car group continuously
       const p = drag.piece;
       if (p.o === 'H') {
@@ -422,10 +369,6 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
   // --- animation loop ---
   renderer.setAnimationLoop(() => {
     if (animFn) animFn();
-    const t = performance.now();
-    for (const m of markers) {
-      m.position.y = 0.06 + Math.sin(t / 250 + m.position.x) * 0.03;
-    }
     renderer.render(scene, camera);
   });
 
@@ -454,12 +397,36 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
     const group = carGroups.get(piece.id);
     if (!group) return;
 
+    // Ghost disc on the suggested destination cell.
+    const discMat = new THREE.MeshStandardMaterial({
+      color: 0xffd23f,
+      emissive: 0x886600,
+      emissiveIntensity: 0.7,
+      transparent: true,
+      opacity: 0.92,
+    });
+    const disc = new THREE.Mesh(hintDiscGeo, discMat);
+    disc.position.set(move.nc - SIZE / 2 + 0.5, 0.07, move.nr - SIZE / 2 + 0.5);
+    scene.add(disc);
+
+    // Bounce the correct car a few times and flash its headlights so the hint is
+    // unmistakable (selecting a car already lights it, so a static glow wouldn't read).
     const lm = group.userData['lightMat'] as THREE.MeshStandardMaterial | undefined;
-    const prev = lm?.emissiveIntensity ?? 0.18;
-    if (lm) lm.emissiveIntensity = 0.9;
-    setTimeout(() => {
-      if (lm) lm.emissiveIntensity = prev;
-    }, 400);
+    const baseY = group.position.y;
+    let t = 0;
+    const iv = setInterval(() => {
+      t += 1;
+      const bob = Math.abs(Math.sin(t * 0.26));
+      group.position.y = baseY + bob * 0.2;
+      if (lm) lm.emissiveIntensity = 0.18 + bob * 0.8;
+      if (t > 72) {
+        clearInterval(iv);
+        group.position.y = baseY;
+        if (lm) lm.emissiveIntensity = selected?.id === piece.id ? 0.9 : 0.18;
+        scene.remove(disc);
+        discMat.dispose();
+      }
+    }, 16);
   }
 
   function dispose() {
