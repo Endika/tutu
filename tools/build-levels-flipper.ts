@@ -18,12 +18,15 @@ import { join } from 'path';
 
 const TOTAL = 100;
 const MIN_DEPTH = 2;
-const MAX_DEPTH = 18; // keep the hardest humane for a kids game
-const HARVEST_MS = 90_000;
+const MAX_DEPTH = 24; // raised ceiling so the back of the bank is genuinely hard
+const HARVEST_MS = 150_000;
 const PER_DEPTH_CAP = 30;
 const PER_LAYOUT_PER_DEPTH = 2;
 
 const rng = makeRng(20260606);
+
+// favour congested layouts so deep (hard) positions are actually reachable
+const PIECE_COUNTS = [8, 9, 10, 11, 12, 12, 11, 10];
 
 // canonical signature of a decoded board (piece order is fixed, but be explicit)
 function sig(board: Board): string {
@@ -36,12 +39,11 @@ function sig(board: Board): string {
 
 // depth -> (signature -> board)
 const pool = new Map<number, Map<string, Board>>();
-const pieceCounts = [5, 6, 7, 8, 9, 10, 11, 12];
 const start = Date.now();
 let layouts = 0;
 
 while (Date.now() - start < HARVEST_MS) {
-  const pc = pieceCounts[layouts % pieceCounts.length]!;
+  const pc = PIECE_COUNTS[layouts % PIECE_COUNTS.length]!;
   layouts++;
   const a = analyze(randomLayout(pc, rng));
   if (!a) continue;
@@ -77,39 +79,51 @@ if (totalAvail < TOTAL) {
   throw new Error(`only ${totalAvail} unique levels pooled (<${TOTAL}); raise HARVEST_MS/PER_DEPTH_CAP`);
 }
 
-// Water-fill selection: counts proportional to weight w(d)=d (harder => more), capped by
-// availability, looped until exactly TOTAL assigned.
-function selectCounts(): Map<number, number> {
-  const depths = [...avail.keys()].sort((a, b) => a - b);
-  const w = (d: number) => d;
-  const counts = new Map<number, number>();
-  depths.forEach((d) => counts.set(d, 0));
-  let remaining = TOTAL;
-  while (remaining > 0) {
-    const open = depths.filter((d) => counts.get(d)! < avail.get(d)!);
-    if (!open.length) break;
-    const sumW = open.reduce((s, d) => s + w(d), 0);
-    let assigned = 0;
-    for (const d of open) {
-      if (remaining - assigned <= 0) break;
-      const want = Math.max(1, Math.round((remaining * w(d)) / sumW));
-      const room = avail.get(d)! - counts.get(d)!;
-      const add = Math.min(want, room, remaining - assigned);
-      counts.set(d, counts.get(d)! + add);
-      assigned += add;
-    }
-    remaining -= assigned;
-    if (assigned === 0) break;
+// Target-curve selection. Anchor points [levelIndex (1-based), optimalMoves] define the
+// desired difficulty per position; we interpolate between them and, for each level, pull
+// from the pool the available depth nearest the target (never below the previous level, to
+// keep the curve non-decreasing). Mid stays moderate; the tail (L75→L100) is the steep
+// climb up to the ceiling — "hard part from ~75 onward", as requested.
+const ANCHORS: Array<[level: number, moves: number]> = [
+  [1, 2],
+  [15, 6],
+  [40, 10],
+  [65, 13],
+  [75, 15],
+  [85, 18],
+  [92, 21],
+  [100, 24],
+];
+
+function targetMoves(i: number): number {
+  for (let k = 0; k < ANCHORS.length - 1; k++) {
+    const [x0, y0] = ANCHORS[k]!;
+    const [x1, y1] = ANCHORS[k + 1]!;
+    if (i <= x1) return y0 + ((y1 - y0) * (i - x0)) / (x1 - x0);
   }
-  return counts;
+  return ANCHORS[ANCHORS.length - 1]![1];
 }
 
-const counts = selectCounts();
+// per-depth remaining stock (arrays of boards)
+const stock = new Map<number, Board[]>();
+for (const [d, b] of pool) stock.set(d, [...b.values()]);
+const depthsSorted = [...stock.keys()].sort((a, b) => a - b);
+
+function takeNearest(target: number, minAllowed: number): { d: number; board: Board } | null {
+  const cands = depthsSorted.filter((d) => d >= minAllowed && stock.get(d)!.length > 0);
+  if (!cands.length) return null;
+  let best = cands[0]!;
+  for (const d of cands) if (Math.abs(d - target) < Math.abs(best - target)) best = d;
+  return { d: best, board: stock.get(best)!.shift()! };
+}
+
 const bank: Level[] = [];
-for (const d of [...counts.keys()].sort((a, b) => a - b)) {
-  const n = counts.get(d)!;
-  const boards = [...pool.get(d)!.values()].slice(0, n);
-  for (const board of boards) bank.push({ board, optimalMoves: d });
+let minAllowed = depthsSorted[0]!;
+for (let i = 1; i <= TOTAL; i++) {
+  const r = takeNearest(Math.round(targetMoves(i)), minAllowed);
+  if (!r) throw new Error(`ran out of stock at level ${i}`);
+  bank.push({ board: r.board, optimalMoves: r.d });
+  minAllowed = r.d; // enforce non-decreasing
 }
 
 bank.sort((a, b) => a.optimalMoves - b.optimalMoves);
