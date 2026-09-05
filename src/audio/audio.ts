@@ -1,55 +1,55 @@
 export interface Player {
-  play(name: 'horn' | 'slide' | 'victory'): void;
-  startMusic(): void;
-  stopMusic(): void;
+  play(name: 'horn' | 'slide' | 'victory'): void
+  startMusic(): void
+  stopMusic(): void
 }
 
 export class Audio {
-  private muted: boolean;
-  private musicEnabled: boolean;
+  private muted: boolean
+  private musicEnabled: boolean
 
   constructor(
     private player: Player,
     muted = false,
     musicEnabled = true,
   ) {
-    this.muted = muted;
-    this.musicEnabled = musicEnabled;
+    this.muted = muted
+    this.musicEnabled = musicEnabled
   }
 
   setMuted(m: boolean): void {
-    this.muted = m;
-    if (m) this.player.stopMusic();
+    this.muted = m
+    if (m) this.player.stopMusic()
   }
 
   isMuted(): boolean {
-    return this.muted;
+    return this.muted
   }
 
   // Music can be turned off independently of the sound effects.
   setMusicEnabled(on: boolean): void {
-    this.musicEnabled = on;
-    if (on) this.music();
-    else this.player.stopMusic();
+    this.musicEnabled = on
+    if (on) this.music()
+    else this.player.stopMusic()
   }
 
   isMusicEnabled(): boolean {
-    return this.musicEnabled;
+    return this.musicEnabled
   }
 
   horn(): void {
-    if (!this.muted) this.player.play('horn');
+    if (!this.muted) this.player.play('horn')
   }
 
   slide(): void {
-    if (!this.muted) this.player.play('slide');
+    if (!this.muted) this.player.play('slide')
   }
 
   victory(): void {
-    if (!this.muted) this.player.play('victory');
+    if (!this.muted) this.player.play('victory')
   }
 
   music(): void {
-    if (!this.muted && this.musicEnabled) this.player.startMusic();
+    if (!this.muted && this.musicEnabled) this.player.startMusic()
   }
 }
