@@ -1,105 +1,114 @@
-import * as THREE from 'three';
-import type { Board, Move, Piece } from '../core/types';
-import { SIZE, EXIT_ROW } from '../core/types';
-import { legalMoves, buildGrid } from '../core/board';
-import { createCarGroup } from './car';
+import * as THREE from 'three'
+import type { Board, Move, Piece } from '../core/types'
+import { SIZE, EXIT_ROW } from '../core/types'
+import { legalMoves, buildGrid } from '../core/board'
+import { createCarGroup } from './car'
 
 // Fixed palette: id 0 = red car, rest bright colours
-const PALETTE: number[] = [0xe23b3b, 0x3b82f6, 0x22c55e, 0xf4c025, 0x8b5cf6, 0xff8a3d, 0x06b6d4, 0xf97316, 0xa3e635, 0xe879f9];
+const PALETTE: number[] = [
+  0xe23b3b, 0x3b82f6, 0x22c55e, 0xf4c025, 0x8b5cf6, 0xff8a3d, 0x06b6d4, 0xf97316, 0xa3e635,
+  0xe879f9,
+]
 
 function pieceColor(id: number): number {
-  return PALETTE[id] ?? 0x888888;
+  return PALETTE[id] ?? 0x888888
 }
 
 function groupCenter(p: Piece): [number, number] {
-  const cx = p.c + (p.o === 'H' ? (p.len - 1) / 2 : 0);
-  const cz = p.r + (p.o === 'V' ? (p.len - 1) / 2 : 0);
-  return [cx - SIZE / 2 + 0.5, cz - SIZE / 2 + 0.5];
+  const cx = p.c + (p.o === 'H' ? (p.len - 1) / 2 : 0)
+  const cz = p.r + (p.o === 'V' ? (p.len - 1) / 2 : 0)
+  return [cx - SIZE / 2 + 0.5, cz - SIZE / 2 + 0.5]
 }
 
 // Returns the continuous [min, max] head position a piece can slide to.
 // For the red car (id 0) rightward, allow head up to SIZE-2 (exit).
 function legalRange(piece: Piece, board: Board): [number, number] {
-  const g = buildGrid(board);
+  const g = buildGrid(board)
   if (piece.o === 'H') {
-    let min = piece.c;
-    while (min - 1 >= 0 && (g[piece.r] as number[])[min - 1] === -1) min--;
-    let tail = piece.c + piece.len - 1;
-    let max = piece.c;
-    while (tail + 1 < SIZE && (g[piece.r] as number[])[tail + 1] === -1) { tail++; max++; }
-    if (piece.id === 0 && tail === SIZE - 1) max = SIZE - 2;
-    return [min, max];
+    let min = piece.c
+    while (min - 1 >= 0 && (g[piece.r] as number[])[min - 1] === -1) min--
+    let tail = piece.c + piece.len - 1
+    let max = piece.c
+    while (tail + 1 < SIZE && (g[piece.r] as number[])[tail + 1] === -1) {
+      tail++
+      max++
+    }
+    if (piece.id === 0 && tail === SIZE - 1) max = SIZE - 2
+    return [min, max]
   } else {
-    let min = piece.r;
-    while (min - 1 >= 0 && (g[min - 1] as number[])[piece.c] === -1) min--;
-    let tail = piece.r + piece.len - 1;
-    let max = piece.r;
-    while (tail + 1 < SIZE && (g[tail + 1] as number[])[piece.c] === -1) { tail++; max++; }
-    return [min, max];
+    let min = piece.r
+    while (min - 1 >= 0 && (g[min - 1] as number[])[piece.c] === -1) min--
+    let tail = piece.r + piece.len - 1
+    let max = piece.r
+    while (tail + 1 < SIZE && (g[tail + 1] as number[])[piece.c] === -1) {
+      tail++
+      max++
+    }
+    return [min, max]
   }
 }
 
 interface DragState {
-  piece: Piece;
-  group: THREE.Group;
-  axis: 'x' | 'z';
-  startHead: number;
-  startHitOnPlane: number;
-  min: number;
-  max: number;
-  moved: boolean;
-  liveHead: number;
+  piece: Piece
+  group: THREE.Group
+  axis: 'x' | 'z'
+  startHead: number
+  startHitOnPlane: number
+  min: number
+  max: number
+  moved: boolean
+  liveHead: number
 }
 
 export interface SceneController {
-  renderBoard(board: Board): void;
-  setOnMove(cb: (move: Move) => void): void;
-  setOnBlocked(cb: () => void): void;
-  highlightHint(move: Move): void;
-  dispose(): void;
+  renderBoard(board: Board): void
+  setOnMove(cb: (move: Move) => void): void
+  setOnBlocked(cb: () => void): void
+  highlightHint(move: Move): void
+  dispose(): void
 }
 
 export function createScene(canvas: HTMLCanvasElement): SceneController {
   // --- renderer ---
-  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-  renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
-  renderer.shadowMap.enabled = true;
-  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+  renderer.shadowMap.enabled = true
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap
 
   // --- scene ---
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(0xe9d9bd);
+  const scene = new THREE.Scene()
+  scene.background = new THREE.Color(0xe9d9bd)
 
   // --- camera ---
   // Near-top-down view: a clear, readable grid (slight tilt keeps the 3D toy look).
-  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100);
-  camera.position.set(0, 13, 3.2);
-  const cameraTarget = new THREE.Vector3(0, 0, 0);
-  camera.lookAt(cameraTarget);
+  const camera = new THREE.PerspectiveCamera(36, 1, 0.1, 100)
+  camera.position.set(0, 13, 3.2)
+  const cameraTarget = new THREE.Vector3(0, 0, 0)
+  camera.lookAt(cameraTarget)
   // World-space span the board needs (6.5 board + exit marker + margins).
-  const BOARD_SPAN = 7.8;
+  const BOARD_SPAN = 7.8
 
   // --- lights ---
-  scene.add(new THREE.HemisphereLight(0xffffff, 0x8d6b3f, 0.9));
-  const dir = new THREE.DirectionalLight(0xffffff, 1.1);
-  dir.position.set(4, 10, 6);
-  dir.castShadow = true;
-  dir.shadow.mapSize.set(1024, 1024);
-  scene.add(dir);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x8d6b3f, 0.9))
+  const dir = new THREE.DirectionalLight(0xffffff, 1.1)
+  dir.position.set(4, 10, 6)
+  dir.castShadow = true
+  dir.shadow.mapSize.set(1024, 1024)
+  scene.add(dir)
 
   // --- board geometry ---
   const boardMesh = new THREE.Mesh(
     new THREE.BoxGeometry(SIZE + 0.5, 0.5, SIZE + 0.5),
     new THREE.MeshStandardMaterial({ color: 0xc98f4f, roughness: 0.85 }),
-  );
-  boardMesh.position.y = -0.26;
-  boardMesh.receiveShadow = true;
-  scene.add(boardMesh);
+  )
+  boardMesh.position.y = -0.26
+  boardMesh.receiveShadow = true
+  scene.add(boardMesh)
 
   // grid lines
-  const lineMat = new THREE.LineBasicMaterial({ color: 0x9c6a32 });
+  const lineMat = new THREE.LineBasicMaterial({ color: 0x9c6a32 })
   for (let i = 0; i <= SIZE; i++) {
-    const x = i - SIZE / 2;
+    const x = i - SIZE / 2
     scene.add(
       new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([
@@ -108,7 +117,7 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
         ]),
         lineMat,
       ),
-    );
+    )
     scene.add(
       new THREE.Line(
         new THREE.BufferGeometry().setFromPoints([
@@ -117,166 +126,166 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
         ]),
         lineMat,
       ),
-    );
+    )
   }
 
   // exit marker
   const exitMesh = new THREE.Mesh(
     new THREE.BoxGeometry(0.6, 0.05, 1),
     new THREE.MeshStandardMaterial({ color: 0xffd23f }),
-  );
-  exitMesh.position.set(SIZE / 2 + 0.05, 0.02, EXIT_ROW - 2.5);
-  scene.add(exitMesh);
+  )
+  exitMesh.position.set(SIZE / 2 + 0.05, 0.02, EXIT_ROW - 2.5)
+  scene.add(exitMesh)
 
   // --- resize ---
   function resize() {
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    renderer.setSize(w, h);
-    const aspect = w / h;
-    camera.aspect = aspect;
+    const w = canvas.clientWidth
+    const h = canvas.clientHeight
+    renderer.setSize(w, h)
+    const aspect = w / h
+    camera.aspect = aspect
     // Adapt the vertical FOV so the board fits on BOTH axes. On portrait phones the
     // horizontal FOV is the tight one, so widen vertically until the board fits across.
-    const distance = camera.position.distanceTo(cameraTarget);
-    const fitFactor = BOARD_SPAN / (2 * distance * Math.min(1, aspect));
-    camera.fov = 2 * Math.atan(fitFactor) * (180 / Math.PI);
-    camera.updateProjectionMatrix();
+    const distance = camera.position.distanceTo(cameraTarget)
+    const fitFactor = BOARD_SPAN / (2 * distance * Math.min(1, aspect))
+    camera.fov = 2 * Math.atan(fitFactor) * (180 / Math.PI)
+    camera.updateProjectionMatrix()
   }
-  const resizeObserver = new ResizeObserver(resize);
-  resizeObserver.observe(canvas);
-  resize();
+  const resizeObserver = new ResizeObserver(resize)
+  resizeObserver.observe(canvas)
+  resize()
 
   // --- state ---
-  let currentBoard: Board = [];
-  const carGroups = new Map<number, THREE.Group>();
+  let currentBoard: Board = []
+  const carGroups = new Map<number, THREE.Group>()
 
-  let selected: Piece | null = null;
+  let selected: Piece | null = null
 
-  let onMoveCb: ((move: Move) => void) | null = null;
-  let onBlockedCb: (() => void) | null = null;
+  let onMoveCb: ((move: Move) => void) | null = null
+  let onBlockedCb: (() => void) | null = null
 
-  let animFn: (() => void) | null = null;
+  let animFn: (() => void) | null = null
 
   // Drag state: null when idle
-  let drag: DragState | null = null;
+  let drag: DragState | null = null
 
   // Board plane for drag raycasting (y = 0)
-  const boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
-  const planeHit = new THREE.Vector3();
+  const boardPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
+  const planeHit = new THREE.Vector3()
 
   // Reusable disc geometry for the hint destination marker
-  const hintDiscGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.08, 24);
+  const hintDiscGeo = new THREE.CylinderGeometry(0.42, 0.42, 0.08, 24)
 
   // --- helpers ---
   function setLit(group: THREE.Group, on: boolean) {
-    group.position.y = on ? 0.12 : 0;
-    const lm = group.userData['lightMat'] as THREE.MeshStandardMaterial | undefined;
-    const bm = group.userData['beamMat'] as THREE.MeshBasicMaterial | undefined;
-    if (lm) lm.emissiveIntensity = on ? 0.9 : 0.18;
-    if (bm) bm.opacity = on ? 0.16 : 0;
+    group.position.y = on ? 0.12 : 0
+    const lm = group.userData['lightMat'] as THREE.MeshStandardMaterial | undefined
+    const bm = group.userData['beamMat'] as THREE.MeshBasicMaterial | undefined
+    if (lm) lm.emissiveIntensity = on ? 0.9 : 0.18
+    if (bm) bm.opacity = on ? 0.16 : 0
   }
 
   function blockedFlash(group: THREE.Group) {
-    const body = group.children[0] as THREE.Mesh;
-    const mat = body.material;
-    if (!(mat instanceof THREE.MeshStandardMaterial)) return;
-    const c0 = mat.color.clone();
-    const x0 = group.position.x;
-    let t = 0;
+    const body = group.children[0] as THREE.Mesh
+    const mat = body.material
+    if (!(mat instanceof THREE.MeshStandardMaterial)) return
+    const c0 = mat.color.clone()
+    const x0 = group.position.x
+    let t = 0
     const iv = setInterval(() => {
-      group.position.x = x0 + Math.sin(t * 1.2) * 0.06;
-      t += 2;
+      group.position.x = x0 + Math.sin(t * 1.2) * 0.06
+      t += 2
       if (t > 18) {
-        clearInterval(iv);
-        group.position.x = x0;
-        mat.color.copy(c0);
+        clearInterval(iv)
+        group.position.x = x0
+        mat.color.copy(c0)
       }
-    }, 16);
+    }, 16)
   }
 
   function selectPiece(piece: Piece) {
-    selected = piece;
-    const group = carGroups.get(piece.id);
-    if (!group) return;
-    setLit(group, true);
-    const moves = legalMoves(currentBoard).filter((mv) => mv.idx === piece.id);
+    selected = piece
+    const group = carGroups.get(piece.id)
+    if (!group) return
+    setLit(group, true)
+    const moves = legalMoves(currentBoard).filter((mv) => mv.idx === piece.id)
     if (!moves.length) {
-      onBlockedCb?.();
-      blockedFlash(group);
+      onBlockedCb?.()
+      blockedFlash(group)
     }
   }
 
   function deselect() {
     if (selected !== null) {
-      const group = carGroups.get(selected.id);
-      if (group) setLit(group, false);
+      const group = carGroups.get(selected.id)
+      if (group) setLit(group, false)
     }
-    selected = null;
+    selected = null
   }
 
   function doMove(piece: Piece, mv: Move) {
-    const group = carGroups.get(piece.id);
-    if (!group) return;
-    setLit(group, false);
-    selected = null;
+    const group = carGroups.get(piece.id)
+    if (!group) return
+    setLit(group, false)
+    selected = null
 
-    const from = group.position.clone();
-    const targetPiece = { ...piece, r: mv.nr, c: mv.nc };
-    const [tx, tz] = groupCenter(targetPiece);
-    const to = new THREE.Vector3(tx, 0, tz);
+    const from = group.position.clone()
+    const targetPiece = { ...piece, r: mv.nr, c: mv.nc }
+    const [tx, tz] = groupCenter(targetPiece)
+    const to = new THREE.Vector3(tx, 0, tz)
 
-    const t0 = performance.now();
-    const dur = 160;
+    const t0 = performance.now()
+    const dur = 160
     animFn = () => {
-      const k = Math.min(1, (performance.now() - t0) / dur);
-      const e = 1 - (1 - k) * (1 - k);
-      group.position.lerpVectors(from, to, e);
+      const k = Math.min(1, (performance.now() - t0) / dur)
+      const e = 1 - (1 - k) * (1 - k)
+      group.position.lerpVectors(from, to, e)
       if (k >= 1) {
-        animFn = null;
-        onMoveCb?.(mv);
+        animFn = null
+        onMoveCb?.(mv)
       }
-    };
+    }
   }
 
   // --- raycaster ---
-  const ray = new THREE.Raycaster();
-  const ndc = new THREE.Vector2();
+  const ray = new THREE.Raycaster()
+  const ndc = new THREE.Vector2()
 
   function setNdc(e: PointerEvent) {
-    const rect = canvas.getBoundingClientRect();
+    const rect = canvas.getBoundingClientRect()
     ndc.set(
       ((e.clientX - rect.left) / rect.width) * 2 - 1,
       -((e.clientY - rect.top) / rect.height) * 2 + 1,
-    );
+    )
   }
 
   function onPointerDown(e: PointerEvent) {
-    setNdc(e);
-    ray.setFromCamera(ndc, camera);
+    setNdc(e)
+    ray.setFromCamera(ndc, camera)
 
     // Raycast car groups
-    const allGroups = [...carGroups.values()];
-    const ch = ray.intersectObjects(allGroups, true);
+    const allGroups = [...carGroups.values()]
+    const ch = ray.intersectObjects(allGroups, true)
     if (ch.length) {
-      let obj: THREE.Object3D | null = ch[0]?.object ?? null;
+      let obj: THREE.Object3D | null = ch[0]?.object ?? null
       while (obj && obj.parent && !(obj.userData['piece'] as Piece | undefined)) {
-        obj = obj.parent;
+        obj = obj.parent
       }
-      const piece = obj?.userData['piece'] as Piece | undefined;
+      const piece = obj?.userData['piece'] as Piece | undefined
       if (piece) {
         // Select if not already selected
         if (selected === null || selected.id !== piece.id) {
-          deselect();
-          selectPiece(piece);
+          deselect()
+          selectPiece(piece)
         }
 
         // Begin a potential drag
-        ray.setFromCamera(ndc, camera);
-        ray.ray.intersectPlane(boardPlane, planeHit);
-        const startHitOnPlane = piece.o === 'H' ? planeHit.x : planeHit.z;
-        const startHead = piece.o === 'H' ? piece.c : piece.r;
-        const [min, max] = legalRange(piece, currentBoard);
-        const group = carGroups.get(piece.id);
+        ray.setFromCamera(ndc, camera)
+        ray.ray.intersectPlane(boardPlane, planeHit)
+        const startHitOnPlane = piece.o === 'H' ? planeHit.x : planeHit.z
+        const startHead = piece.o === 'H' ? piece.c : piece.r
+        const [min, max] = legalRange(piece, currentBoard)
+        const group = carGroups.get(piece.id)
         if (group) {
           drag = {
             piece,
@@ -288,125 +297,125 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
             max,
             moved: false,
             liveHead: startHead,
-          };
-          canvas.setPointerCapture(e.pointerId);
+          }
+          canvas.setPointerCapture(e.pointerId)
         }
-        return;
+        return
       }
     }
 
     // Empty board click → deselect
-    deselect();
+    deselect()
   }
 
   function onPointerMove(e: PointerEvent) {
-    if (!drag) return;
-    setNdc(e);
-    ray.setFromCamera(ndc, camera);
-    ray.ray.intersectPlane(boardPlane, planeHit);
+    if (!drag) return
+    setNdc(e)
+    ray.setFromCamera(ndc, camera)
+    ray.ray.intersectPlane(boardPlane, planeHit)
 
-    const now = drag.axis === 'x' ? planeHit.x : planeHit.z;
-    const delta = now - drag.startHitOnPlane;
-    const rawHead = drag.startHead + delta;
-    const clampedHead = Math.max(drag.min, Math.min(drag.max, rawHead));
-    drag.liveHead = clampedHead;
+    const now = drag.axis === 'x' ? planeHit.x : planeHit.z
+    const delta = now - drag.startHitOnPlane
+    const rawHead = drag.startHead + delta
+    const clampedHead = Math.max(drag.min, Math.min(drag.max, rawHead))
+    drag.liveHead = clampedHead
 
     if (Math.abs(clampedHead - drag.startHead) > 0.15) {
-      drag.moved = true;
+      drag.moved = true
       // Move the car group continuously
-      const p = drag.piece;
+      const p = drag.piece
       if (p.o === 'H') {
-        const cx = clampedHead + (p.len - 1) / 2 - SIZE / 2 + 0.5;
-        drag.group.position.x = cx;
+        const cx = clampedHead + (p.len - 1) / 2 - SIZE / 2 + 0.5
+        drag.group.position.x = cx
       } else {
-        const cz = clampedHead + (p.len - 1) / 2 - SIZE / 2 + 0.5;
-        drag.group.position.z = cz;
+        const cz = clampedHead + (p.len - 1) / 2 - SIZE / 2 + 0.5
+        drag.group.position.z = cz
       }
       // Lift slightly while dragging
-      drag.group.position.y = 0.2;
+      drag.group.position.y = 0.2
     }
   }
 
   function onPointerUp(e: PointerEvent) {
-    if (!drag) return;
+    if (!drag) return
 
     if (drag.moved) {
       // Snap to nearest integer within [min, max]
-      const snapped = Math.max(drag.min, Math.min(drag.max, Math.round(drag.liveHead)));
-      const piece = drag.piece;
+      const snapped = Math.max(drag.min, Math.min(drag.max, Math.round(drag.liveHead)))
+      const piece = drag.piece
 
       if (snapped !== drag.startHead) {
         // Commit the move via the same path as tapped moves
         const mv: Move =
           piece.o === 'H'
             ? { idx: piece.id, nr: piece.r, nc: snapped }
-            : { idx: piece.id, nr: snapped, nc: piece.c };
-        doMove(piece, mv);
+            : { idx: piece.id, nr: snapped, nc: piece.c }
+        doMove(piece, mv)
       } else {
         // Dragged but ended at start — return car to resting position
-        const [wx, wz] = groupCenter(piece);
-        drag.group.position.set(wx, 0, wz);
-        deselect();
+        const [wx, wz] = groupCenter(piece)
+        drag.group.position.set(wx, 0, wz)
+        deselect()
       }
     }
     // If !drag.moved: it was a tap — leave car selected with markers showing
 
     try {
-      canvas.releasePointerCapture(e.pointerId);
+      canvas.releasePointerCapture(e.pointerId)
     } catch {
       // ignore if pointer was already released
     }
-    drag = null;
+    drag = null
   }
 
   function onPointerCancel(e: PointerEvent) {
-    if (!drag) return;
+    if (!drag) return
     // Return car to its original position
-    const [wx, wz] = groupCenter(drag.piece);
-    drag.group.position.set(wx, 0, wz);
+    const [wx, wz] = groupCenter(drag.piece)
+    drag.group.position.set(wx, 0, wz)
     try {
-      canvas.releasePointerCapture(e.pointerId);
+      canvas.releasePointerCapture(e.pointerId)
     } catch {
       // ignore
     }
-    drag = null;
+    drag = null
   }
 
-  canvas.addEventListener('pointerdown', onPointerDown);
-  canvas.addEventListener('pointermove', onPointerMove);
-  canvas.addEventListener('pointerup', onPointerUp);
-  canvas.addEventListener('pointercancel', onPointerCancel);
+  canvas.addEventListener('pointerdown', onPointerDown)
+  canvas.addEventListener('pointermove', onPointerMove)
+  canvas.addEventListener('pointerup', onPointerUp)
+  canvas.addEventListener('pointercancel', onPointerCancel)
 
   // --- animation loop ---
   renderer.setAnimationLoop(() => {
-    if (animFn) animFn();
-    renderer.render(scene, camera);
-  });
+    if (animFn) animFn()
+    renderer.render(scene, camera)
+  })
 
   // --- controller implementation ---
   function renderBoard(board: Board) {
-    currentBoard = board;
+    currentBoard = board
 
-    for (const g of carGroups.values()) scene.remove(g);
-    carGroups.clear();
-    deselect();
-    drag = null;
+    for (const g of carGroups.values()) scene.remove(g)
+    carGroups.clear()
+    deselect()
+    drag = null
 
     for (const piece of board) {
-      const group = createCarGroup(piece, pieceColor(piece.id));
-      group.userData['piece'] = piece;
-      const [wx, wz] = groupCenter(piece);
-      group.position.set(wx, 0, wz);
-      scene.add(group);
-      carGroups.set(piece.id, group);
+      const group = createCarGroup(piece, pieceColor(piece.id))
+      group.userData['piece'] = piece
+      const [wx, wz] = groupCenter(piece)
+      group.position.set(wx, 0, wz)
+      scene.add(group)
+      carGroups.set(piece.id, group)
     }
   }
 
   function highlightHint(move: Move) {
-    const piece = currentBoard[move.idx];
-    if (!piece) return;
-    const group = carGroups.get(piece.id);
-    if (!group) return;
+    const piece = currentBoard[move.idx]
+    if (!piece) return
+    const group = carGroups.get(piece.id)
+    if (!group) return
 
     // Ghost disc on the suggested destination cell.
     const discMat = new THREE.MeshStandardMaterial({
@@ -415,47 +424,47 @@ export function createScene(canvas: HTMLCanvasElement): SceneController {
       emissiveIntensity: 0.7,
       transparent: true,
       opacity: 0.92,
-    });
-    const disc = new THREE.Mesh(hintDiscGeo, discMat);
-    disc.position.set(move.nc - SIZE / 2 + 0.5, 0.07, move.nr - SIZE / 2 + 0.5);
-    scene.add(disc);
+    })
+    const disc = new THREE.Mesh(hintDiscGeo, discMat)
+    disc.position.set(move.nc - SIZE / 2 + 0.5, 0.07, move.nr - SIZE / 2 + 0.5)
+    scene.add(disc)
 
     // Bounce the correct car a few times and flash its headlights so the hint is
     // unmistakable (selecting a car already lights it, so a static glow wouldn't read).
-    const lm = group.userData['lightMat'] as THREE.MeshStandardMaterial | undefined;
-    const baseY = group.position.y;
-    let t = 0;
+    const lm = group.userData['lightMat'] as THREE.MeshStandardMaterial | undefined
+    const baseY = group.position.y
+    let t = 0
     const iv = setInterval(() => {
-      t += 1;
-      const bob = Math.abs(Math.sin(t * 0.26));
-      group.position.y = baseY + bob * 0.2;
-      if (lm) lm.emissiveIntensity = 0.18 + bob * 0.8;
+      t += 1
+      const bob = Math.abs(Math.sin(t * 0.26))
+      group.position.y = baseY + bob * 0.2
+      if (lm) lm.emissiveIntensity = 0.18 + bob * 0.8
       if (t > 72) {
-        clearInterval(iv);
-        group.position.y = baseY;
-        if (lm) lm.emissiveIntensity = selected?.id === piece.id ? 0.9 : 0.18;
-        scene.remove(disc);
-        discMat.dispose();
+        clearInterval(iv)
+        group.position.y = baseY
+        if (lm) lm.emissiveIntensity = selected?.id === piece.id ? 0.9 : 0.18
+        scene.remove(disc)
+        discMat.dispose()
       }
-    }, 16);
+    }, 16)
   }
 
   function dispose() {
-    renderer.setAnimationLoop(null);
-    canvas.removeEventListener('pointerdown', onPointerDown);
-    canvas.removeEventListener('pointermove', onPointerMove);
-    canvas.removeEventListener('pointerup', onPointerUp);
-    canvas.removeEventListener('pointercancel', onPointerCancel);
-    resizeObserver.disconnect();
-    renderer.dispose();
+    renderer.setAnimationLoop(null)
+    canvas.removeEventListener('pointerdown', onPointerDown)
+    canvas.removeEventListener('pointermove', onPointerMove)
+    canvas.removeEventListener('pointerup', onPointerUp)
+    canvas.removeEventListener('pointercancel', onPointerCancel)
+    resizeObserver.disconnect()
+    renderer.dispose()
   }
 
-  return { renderBoard, setOnMove, setOnBlocked, highlightHint, dispose };
+  return { renderBoard, setOnMove, setOnBlocked, highlightHint, dispose }
 
   function setOnMove(cb: (move: Move) => void) {
-    onMoveCb = cb;
+    onMoveCb = cb
   }
   function setOnBlocked(cb: () => void) {
-    onBlockedCb = cb;
+    onBlockedCb = cb
   }
 }

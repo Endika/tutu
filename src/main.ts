@@ -1,3 +1,3 @@
-import { startApp } from './app/app';
+import { startApp } from './app/app'
 
-void startApp();
+void startApp()

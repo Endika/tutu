@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Full-viewport game canvas; the HUD overlays it (fixed inset-0) */
 body {
