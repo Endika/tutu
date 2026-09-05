@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.2.1](https://github.com/Endika/tutu/compare/v0.2.0...v0.2.1) (2026-09-05)
+
+
+### Chores
+
+* **deps-dev:** bump browserslist ([426292d](https://github.com/Endika/tutu/commit/426292dd7554fafd38bee5fc67a095d7145af00d))
+* **deps-dev:** bump the npm-minor-patch group with 3 updates ([90f65c6](https://github.com/Endika/tutu/commit/90f65c68256232aa1c208d5c9d686af1df22382a))
+* **deps-dev:** bump the npm-minor-patch group with 4 updates ([2a3eeb8](https://github.com/Endika/tutu/commit/2a3eeb81b1e63b68babc78efc5ac482608efa604))
+* **deps-dev:** bump the npm-minor-patch group with 5 updates ([1b72a84](https://github.com/Endika/tutu/commit/1b72a84a2b86f38bfb88aad9db30f874db39e19e))
+* **deps-dev:** bump the npm-minor-patch group with 6 updates ([b17e6b1](https://github.com/Endika/tutu/commit/b17e6b1f95fc3fd8cbbb5b0b7c245f2040a44cb2))
+* **deps:** bump fast-uri in the security-npm group across 1 directory ([555aa73](https://github.com/Endika/tutu/commit/555aa7336b69339dfef056f95f7335fc1f80e31b))
+* extend lint, format and type gates to the test directory ([a10a71a](https://github.com/Endika/tutu/commit/a10a71afa9c0b920085ef9e9975d0ea3868a419c))
+* type-check the tools project in the gate ([bc29433](https://github.com/Endika/tutu/commit/bc294338329f98bcb8e50fc6cc9a5db997ea0d35))
+
 ## [0.2.0](https://github.com/Endika/tutu/compare/v0.1.0...v0.2.0) (2026-08-04)
 
 
