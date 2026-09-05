@@ -11,7 +11,7 @@
     "lint:fix": "eslint src tests tools --ext .ts --fix",
     "format": "prettier --write \"{src,tests,tools}/**/*.{ts,css}\"",
     "format:check": "prettier --check \"{src,tests,tools}/**/*.{ts,css}\"",
-    "type:check": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.test.json",
+    "type:check": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.test.json && tsc --noEmit -p tsconfig.node.json",
     "test": "vitest",
     "test:run": "vitest run --passWithNoTests",
     "test:coverage": "vitest run --coverage",
