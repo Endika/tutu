@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.3](https://github.com/Endika/tutu/compare/v0.2.2...v0.2.3) (2026-09-08)
+
+
+### Chores
+
+* **deps-dev:** bump vitest and @vitest/coverage-v8 to 5.0.0 ([d853c98](https://github.com/Endika/tutu/commit/d853c989d0f45df721da7cc604c461828017cc19))
+
 ## [0.2.2](https://github.com/Endika/tutu/compare/v0.2.1...v0.2.2) (2026-09-08)
 
 
