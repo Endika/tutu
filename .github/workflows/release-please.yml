@@ -20,25 +20,16 @@ jobs:
       - id: release
         uses: googleapis/release-please-action@v5
         with:
-          # RELEASE_PLEASE_TOKEN is what the sister apps use; without it the
-          # release commit is pushed by GITHUB_TOKEN and triggers no workflow.
-          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          # No GITHUB_TOKEN fallback on purpose: the release merge has to be a push
+          # that triggers CI and deploy, and GITHUB_TOKEN triggers nothing. A missing
+          # PAT should fail loudly here, not land a release that deploys nothing.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
       - if: ${{ steps.release.outputs.pr }}
         env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN }}
           REPO: ${{ github.repository }}
           PR_JSON: ${{ steps.release.outputs.pr }}
         run: gh pr merge --rebase --auto -R "$REPO" "$(echo "$PR_JSON" | jq -r .number)"
-
-      # When a release is actually published, redeploy from main so the live
-      # build carries the bumped version. release-please's own version-bump
-      # commit is pushed by GITHUB_TOKEN and does NOT trigger the on:push deploy,
-      # so the site would otherwise stay one release behind.
-      - if: ${{ steps.release.outputs.release_created }}
-        env:
-          GH_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          REPO: ${{ github.repository }}
-        run: gh workflow run deploy.yml -R "$REPO" --ref main
