@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.4](https://github.com/Endika/tutu/compare/v0.2.3...v0.2.4) (2026-09-08)
+
+
+### Chores
+
+* **deps-dev:** bump js-yaml ([680a566](https://github.com/Endika/tutu/commit/680a566b41eae686c3165552ef05a60f7014ff01))
+
 ## [0.2.3](https://github.com/Endika/tutu/compare/v0.2.2...v0.2.3) (2026-09-08)
 
 
