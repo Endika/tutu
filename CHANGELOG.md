@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.2](https://github.com/Endika/tutu/compare/v0.2.1...v0.2.2) (2026-09-08)
+
+
+### Chores
+
+* **deps-dev:** bump the npm-minor-patch group with 4 updates ([dc866e4](https://github.com/Endika/tutu/commit/dc866e48a5683d5ca61a743e59ff595bfb0f2702))
+
 ## [0.2.1](https://github.com/Endika/tutu/compare/v0.2.0...v0.2.1) (2026-09-05)
 
 
