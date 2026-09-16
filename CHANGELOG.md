@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.3.0](https://github.com/Endika/tutu/compare/v0.2.4...v0.3.0) (2026-09-16)
+
+
+### Features
+
+* **ci:** block PRs that introduce high-severity dependency advisories ([805edba](https://github.com/Endika/tutu/commit/805edba9160ced2a95510c8974b63eb5753c1305))
+
 ## [0.2.4](https://github.com/Endika/tutu/compare/v0.2.3...v0.2.4) (2026-09-08)
 
 
