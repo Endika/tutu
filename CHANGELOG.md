@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.0](https://github.com/Endika/tutu/compare/v0.3.0...v0.4.0) (2026-09-16)
+
+
+### Features
+
+* **ci:** add CodeQL static analysis ([6a6cc44](https://github.com/Endika/tutu/commit/6a6cc448c423733b64730b28a5c96e4c4fbcba78))
+
 ## [0.3.0](https://github.com/Endika/tutu/compare/v0.2.4...v0.3.0) (2026-09-16)
 
 
