@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.1](https://github.com/Endika/tutu/compare/v0.4.0...v0.4.1) (2026-09-17)
+
+
+### Bug Fixes
+
+* **worker:** validate generator worker message shape at runtime ([d2e38da](https://github.com/Endika/tutu/commit/d2e38daa46252ececf8805840374388bbb8dd0a0))
+
 ## [0.4.0](https://github.com/Endika/tutu/compare/v0.3.0...v0.4.0) (2026-09-16)
 
 
