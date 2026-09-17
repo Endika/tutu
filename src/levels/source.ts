@@ -3,6 +3,7 @@ import { bankLevel, bankSize } from './bank'
 import { levelToParams } from '../core/difficulty'
 import { generateAtDepth } from '../core/generator'
 import { makeRng } from '../core/rng'
+import type { GenerateRequest, GenerateResponse } from '../worker/protocol'
 
 export type GenFn = (pieceCount: number, lo: number, hi: number) => Level | null
 
@@ -61,7 +62,7 @@ export function nextLevelAsync(index: number): Promise<Level> {
   const id = ++msgSeq
   return new Promise<Level>((resolve) => {
     const w = getWorker()
-    const onMsg = (e: MessageEvent<{ id: number; level: Level | null }>) => {
+    const onMsg = (e: MessageEvent<GenerateResponse>) => {
       if (e.data.id !== id) return
       w.removeEventListener('message', onMsg)
       // On starve, recycle a hard bank level rather than re-running heavy
@@ -69,6 +70,7 @@ export function nextLevelAsync(index: number): Promise<Level> {
       resolve(e.data.level ?? recycleHard(index))
     }
     w.addEventListener('message', onMsg)
-    w.postMessage({ id, pieceCount, lo, hi, maxLayouts: TAIL_MAX_LAYOUTS })
+    const request: GenerateRequest = { id, pieceCount, lo, hi, maxLayouts: TAIL_MAX_LAYOUTS }
+    w.postMessage(request)
   })
 }
