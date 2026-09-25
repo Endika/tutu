@@ -10,13 +10,19 @@ export interface SaveState {
 }
 const KEY = 'tutu.v1'
 const DEFAULT: SaveState = { levelIndex: 0, muted: false, lang: 'en', musicOff: false }
-export function load(store: KV = localStorage): SaveState {
+export function load(store?: KV): SaveState {
   try {
-    return { ...DEFAULT, ...JSON.parse(store.getItem(KEY) ?? '{}') }
+    const kv = store ?? localStorage
+    return { ...DEFAULT, ...JSON.parse(kv.getItem(KEY) ?? '{}') }
   } catch {
     return { ...DEFAULT }
   }
 }
-export function save(state: SaveState, store: KV = localStorage): void {
-  store.setItem(KEY, JSON.stringify(state))
+export function save(state: SaveState, store?: KV): void {
+  try {
+    const kv = store ?? localStorage
+    kv.setItem(KEY, JSON.stringify(state))
+  } catch {
+    // storage full or blocked: keep playing with in-memory state
+  }
 }
