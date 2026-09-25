@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.2](https://github.com/Endika/tutu/compare/v0.4.1...v0.4.2) (2026-09-25)
+
+
+### Bug Fixes
+
+* never crash when storage is blocked or full ([8b35b16](https://github.com/Endika/tutu/commit/8b35b16b4f0660d2a83b00f153d1a32efad6df56))
+
 ## [0.4.1](https://github.com/Endika/tutu/compare/v0.4.0...v0.4.1) (2026-09-17)
 
 
