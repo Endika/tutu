@@ -27,7 +27,7 @@ loads, a little harder every time.
 
 ## Features
 
-- **Endless, rising difficulty** — a hand-built level bank plus on-device generation for the long tail
+- **Endless, rising difficulty** — a pre-generated level bank (`npm run gen:levels`) plus on-device generation for the long tail
 - **Fully offline & installable** — a PWA that keeps working with no connection after the first load
 - **No accounts, no backend, no ads** — your progress lives in your browser
 

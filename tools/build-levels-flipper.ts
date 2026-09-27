@@ -6,7 +6,7 @@
 // depth, then select exactly 100 on a non-decreasing, back-weighted curve, clamped to what
 // is actually reachable. Output: flipper-tutu/tools/levels.json (vendored & committed there).
 //
-// Run: cd /home/endika/workspace/tutu && npx tsx tools/build-levels-flipper.ts
+// Run from the repo root, with flipper-tutu cloned next to it: npx tsx tools/build-levels-flipper.ts
 
 import { makeRng } from '../src/core/rng'
 import { randomLayout } from '../src/core/generator'
