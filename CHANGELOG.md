@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.3](https://github.com/Endika/tutu/compare/v0.4.2...v0.4.3) (2026-09-27)
+
+
+### Bug Fixes
+
+* never overwrite a saved game at start-up ([9a2cd96](https://github.com/Endika/tutu/commit/9a2cd961c523cf36efb7127d13fae07ceda190e2))
+
 ## [0.4.2](https://github.com/Endika/tutu/compare/v0.4.1...v0.4.2) (2026-09-25)
 
 
