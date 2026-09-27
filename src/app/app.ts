@@ -74,7 +74,6 @@ export async function startApp(): Promise<void> {
     scene.renderBoard(currentBoard)
     updateCounters(index, moveCount)
     levelIndex = index
-    persistState()
   }
 
   scene.setOnMove((move: Move) => {
@@ -121,7 +120,9 @@ export async function startApp(): Promise<void> {
     },
     onNext(): void {
       levelIndex++
-      void loadLevel(levelIndex)
+      // Only here, not in loadLevel: the start-up load must never write, or an unreadable
+      // save would be overwritten with level 0 before the player has done anything.
+      void loadLevel(levelIndex).then(persistState)
     },
     onMuteToggle(): void {
       audio.setMuted(!audio.isMuted())

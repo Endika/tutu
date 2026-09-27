@@ -20,11 +20,10 @@ it('round-trips state and recovers from corrupt storage', () => {
 it('returns defaults when storage is empty', () => {
   expect(load(memKV())).toEqual({ levelIndex: 0, muted: false, lang: 'en', musicOff: false })
 })
-it('format guard: state saved through the real save path loads back complete', () => {
+it('format guard: the value this version stores loads back complete', () => {
   const kv = memKV()
-  const state = { levelIndex: 3, muted: true, lang: 'fr', musicOff: true }
-  save(state, kv)
-  expect(load(kv)).toEqual(state)
+  kv.setItem('tutu.v1', '{"levelIndex":3,"muted":true,"lang":"fr","musicOff":true}')
+  expect(load(kv)).toEqual({ levelIndex: 3, muted: true, lang: 'fr', musicOff: true })
 })
 it('load falls back to defaults when storage access is blocked, without throwing', () => {
   const blocked: KV = {
