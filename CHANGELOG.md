@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.4](https://github.com/Endika/tutu/compare/v0.4.3...v0.4.4) (2026-09-28)
+
+
+### Bug Fixes
+
+* let a failed level generation be retried instead of spinning forever ([0842f1c](https://github.com/Endika/tutu/commit/0842f1c189beea402af387467b3989fa4515ab69))
+
 ## [0.4.3](https://github.com/Endika/tutu/compare/v0.4.2...v0.4.3) (2026-09-27)
 
 
