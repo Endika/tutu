@@ -26,6 +26,10 @@ let musicBtn: HTMLButtonElement | null = null
 let winBanner: HTMLDivElement | null = null
 let nextBtn: HTMLButtonElement | null = null
 let loadingOverlay: HTMLDivElement | null = null
+let spinnerEl: HTMLDivElement | null = null
+let loadingMsgEl: HTMLParagraphElement | null = null
+let retryBtn: HTMLButtonElement | null = null
+let onRetry: (() => void) | null = null
 
 function btn(
   icon: string,
@@ -111,13 +115,17 @@ export function buildHud(el: HTMLElement, h: HudHandlers): void {
   loadingOverlay = document.createElement('div')
   loadingOverlay.className =
     'pointer-events-auto fixed inset-0 z-30 hidden flex-col items-center justify-center gap-4 bg-black/40'
-  const spinner = document.createElement('div')
-  spinner.className = 'h-12 w-12 rounded-full border-4 border-white/40 border-t-white animate-spin'
-  const loadingMsg = document.createElement('p')
-  loadingMsg.id = 'loading-msg'
-  loadingMsg.className = 'text-xl font-bold text-white'
-  loadingMsg.textContent = t('loading')
-  loadingOverlay.append(spinner, loadingMsg)
+  spinnerEl = document.createElement('div')
+  spinnerEl.className =
+    'h-12 w-12 rounded-full border-4 border-white/40 border-t-white animate-spin'
+  loadingMsgEl = document.createElement('p')
+  loadingMsgEl.id = 'loading-msg'
+  loadingMsgEl.className = 'text-xl font-bold text-white'
+  loadingMsgEl.textContent = t('loading')
+  retryBtn = btn('🔁', t('retry'), () => onRetry?.(), 'bg-orange-400 text-white px-10 py-4')
+  retryBtn.id = 'btn-retry'
+  retryBtn.classList.replace('flex', 'hidden')
+  loadingOverlay.append(spinnerEl, loadingMsgEl, retryBtn)
 
   // --- bottom controls ---
   const bottomBar = document.createElement('div')
@@ -173,10 +181,25 @@ export function buildHud(el: HTMLElement, h: HudHandlers): void {
   el.append(topBar, winBanner, loadingOverlay, bottomBar)
 }
 
-export function showLoading(): void {
+function setOverlay(loading: boolean): void {
   if (!loadingOverlay) return
   loadingOverlay.classList.remove('hidden')
   loadingOverlay.classList.add('flex')
+  spinnerEl?.classList.toggle('hidden', !loading)
+  retryBtn?.classList.toggle('hidden', loading)
+  retryBtn?.classList.toggle('flex', !loading)
+  if (loadingMsgEl) loadingMsgEl.textContent = t(loading ? 'loading' : 'loadError')
+}
+
+export function showLoading(): void {
+  onRetry = null
+  setOverlay(true)
+}
+
+// Replaces the spinner with an error and a retry button that calls `retry`.
+export function showLoadError(retry: () => void): void {
+  onRetry = retry
+  setOverlay(false)
 }
 
 export function hideLoading(): void {

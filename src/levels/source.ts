@@ -46,31 +46,71 @@ export function nextLevel(index: number, gen: GenFn = defaultGen): Level {
   return gen(pieceCount, lo, hi) ?? recycleHard(index)
 }
 
-let worker: Worker | null = null
-let msgSeq = 0
-function getWorker(): Worker {
-  worker ??= new Worker(new URL('../worker/generator.worker.ts', import.meta.url), {
-    type: 'module',
-  })
-  return worker
+// The subset of Worker this module uses, so tests can drive it with an in-memory fake.
+export interface LevelWorker {
+  postMessage(request: GenerateRequest): void
+  terminate(): void
+  addEventListener(type: 'message' | 'error' | 'messageerror', listener: (e: Event) => void): void
 }
 
-export function nextLevelAsync(index: number): Promise<Level> {
-  const fromBank = bankLevel(index)
-  if (fromBank) return Promise.resolve(fromBank)
-  const { pieceCount, lo, hi } = tailParams(index)
-  const id = ++msgSeq
-  return new Promise<Level>((resolve) => {
-    const w = getWorker()
-    const onMsg = (e: MessageEvent<GenerateResponse>) => {
-      if (e.data.id !== id) return
-      w.removeEventListener('message', onMsg)
+interface Pending {
+  index: number
+  resolve: (level: Level) => void
+  reject: (err: Error) => void
+}
+
+export function createAsyncSource(spawn: () => LevelWorker): (index: number) => Promise<Level> {
+  let worker: LevelWorker | null = null
+  let msgSeq = 0
+  const pending = new Map<number, Pending>()
+
+  // A worker that failed to load or threw never answers, and a reply that can't be
+  // deserialized carries no readable id, so every pending request is failed and the
+  // next one starts a fresh worker.
+  function failAll(w: LevelWorker, reason: string): void {
+    if (worker !== w) return
+    w.terminate()
+    worker = null
+    const err = new Error(reason)
+    for (const p of pending.values()) p.reject(err)
+    pending.clear()
+  }
+
+  function getWorker(): LevelWorker {
+    if (worker) return worker
+    const w = spawn()
+    w.addEventListener('message', (e) => {
+      const { id, level } = (e as MessageEvent<GenerateResponse>).data
+      const p = pending.get(id)
+      if (!p) return
+      pending.delete(id)
       // On starve, recycle a hard bank level rather than re-running heavy
       // generation on the main thread (which would freeze the UI).
-      resolve(e.data.level ?? recycleHard(index))
-    }
-    w.addEventListener('message', onMsg)
-    const request: GenerateRequest = { id, pieceCount, lo, hi, maxLayouts: TAIL_MAX_LAYOUTS }
-    w.postMessage(request)
-  })
+      p.resolve(level ?? recycleHard(p.index))
+    })
+    w.addEventListener('error', () => failAll(w, 'level worker failed'))
+    w.addEventListener('messageerror', () => failAll(w, 'level worker reply unreadable'))
+    worker = w
+    return w
+  }
+
+  return (index) => {
+    const fromBank = bankLevel(index)
+    if (fromBank) return Promise.resolve(fromBank)
+    const { pieceCount, lo, hi } = tailParams(index)
+    return new Promise<Level>((resolve, reject) => {
+      const w = getWorker()
+      const id = ++msgSeq
+      pending.set(id, { index, resolve, reject })
+      const request: GenerateRequest = { id, pieceCount, lo, hi, maxLayouts: TAIL_MAX_LAYOUTS }
+      w.postMessage(request)
+    })
+  }
 }
+
+export const nextLevelAsync = createAsyncSource(
+  () =>
+    new Worker(new URL('../worker/generator.worker.ts', import.meta.url), {
+      type: 'module',
+    }),
+)

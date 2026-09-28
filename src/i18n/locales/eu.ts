@@ -13,4 +13,6 @@ export const eu: Dict = {
   music: 'Musika',
   musicOff: 'Musikarik ez',
   loading: 'Maila berria…',
+  loadError: 'Ezin izan da maila berririk sortu.',
+  retry: 'Saiatu berriro',
 }
