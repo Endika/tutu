@@ -13,4 +13,6 @@ export const ca: Dict = {
   music: 'Música',
   musicOff: 'Sense música',
   loading: 'Nou nivell…',
+  loadError: "No s'ha pogut crear un nivell nou.",
+  retry: 'Torna-ho a provar',
 }

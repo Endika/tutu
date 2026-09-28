@@ -12,6 +12,8 @@ export interface Dict {
   music: string
   musicOff: string
   loading: string
+  loadError: string
+  retry: string
 }
 export const en: Dict = {
   reset: 'Reset',
@@ -27,4 +29,6 @@ export const en: Dict = {
   music: 'Music',
   musicOff: 'Music off',
   loading: 'New level…',
+  loadError: "Couldn't make a new level.",
+  retry: 'Try again',
 }

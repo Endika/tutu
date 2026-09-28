@@ -13,4 +13,6 @@ export const gl: Dict = {
   music: 'Música',
   musicOff: 'Sen música',
   loading: 'Novo nivel…',
+  loadError: 'Non se puido crear un nivel novo.',
+  retry: 'Tentar de novo',
 }

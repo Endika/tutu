@@ -1,4 +1,4 @@
-import type { Board, Move } from '../core/types'
+import type { Board, Level, Move } from '../core/types'
 import { applyMove, isWin } from '../core/board'
 import { solve } from '../core/solver'
 import { nextLevelAsync, willGenerate } from '../levels/source'
@@ -18,6 +18,7 @@ import {
   updateMusicLabel,
   showLoading,
   hideLoading,
+  showLoadError,
 } from './hud'
 
 function deepCopy(b: Board): Board {
@@ -60,10 +61,17 @@ export async function startApp(): Promise<void> {
     }
   }
 
-  async function loadLevel(index: number): Promise<void> {
+  async function loadLevel(index: number, onLoaded?: () => void): Promise<void> {
     const generating = willGenerate(index)
     if (generating) showLoading()
-    const lvl = await nextLevelAsync(index)
+    let lvl: Level
+    try {
+      lvl = await nextLevelAsync(index)
+    } catch (err) {
+      console.error(err)
+      showLoadError(() => void loadLevel(index, onLoaded))
+      return
+    }
     if (generating) hideLoading()
     currentBoard = deepCopy(lvl.board)
     startBoard = deepCopy(lvl.board)
@@ -74,6 +82,7 @@ export async function startApp(): Promise<void> {
     scene.renderBoard(currentBoard)
     updateCounters(index, moveCount)
     levelIndex = index
+    onLoaded?.()
   }
 
   scene.setOnMove((move: Move) => {
@@ -119,10 +128,9 @@ export async function startApp(): Promise<void> {
       if (s?.hint) scene.highlightHint(s.hint)
     },
     onNext(): void {
-      levelIndex++
-      // Only here, not in loadLevel: the start-up load must never write, or an unreadable
+      // Saved only here, not in loadLevel: the start-up load must never write, or an unreadable
       // save would be overwritten with level 0 before the player has done anything.
-      void loadLevel(levelIndex).then(persistState)
+      void loadLevel(levelIndex + 1, persistState)
     },
     onMuteToggle(): void {
       audio.setMuted(!audio.isMuted())

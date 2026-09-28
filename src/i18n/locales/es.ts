@@ -13,4 +13,6 @@ export const es: Dict = {
   music: 'Música',
   musicOff: 'Sin música',
   loading: 'Nuevo nivel…',
+  loadError: 'No se pudo crear un nivel nuevo.',
+  retry: 'Reintentar',
 }
