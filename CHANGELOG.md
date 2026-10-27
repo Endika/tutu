@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.5](https://github.com/Endika/tutu/compare/v0.4.4...v0.4.5) (2026-10-27)
+
+
+### Bug Fixes
+
+* **deps:** declare @types/node instead of relying on a transitive peer ([4984d12](https://github.com/Endika/tutu/commit/4984d129e1c3bba7b400d3e34666ba6234a6a377))
+
 ## [0.4.4](https://github.com/Endika/tutu/compare/v0.4.3...v0.4.4) (2026-09-28)
 
 
