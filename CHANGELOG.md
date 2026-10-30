@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.6](https://github.com/Endika/tutu/compare/v0.4.5...v0.4.6) (2026-10-30)
+
+
+### Bug Fixes
+
+* **deps:** bump serialize-javascript to 7.1.3 ([63b9404](https://github.com/Endika/tutu/commit/63b9404ca27bf2109cf50dbe93950cba49492667))
+
 ## [0.4.5](https://github.com/Endika/tutu/compare/v0.4.4...v0.4.5) (2026-10-27)
 
 
