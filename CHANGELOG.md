@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.4.7](https://github.com/Endika/tutu/compare/v0.4.6...v0.4.7) (2026-11-23)
+
+
+### Bug Fixes
+
+* **pwa:** precache the app again so installed apps update ([4c658ec](https://github.com/Endika/tutu/commit/4c658ec3df59e0247b9584cc9a35d1607776957d))
+
 ## [0.4.6](https://github.com/Endika/tutu/compare/v0.4.5...v0.4.6) (2026-10-30)
 
 
